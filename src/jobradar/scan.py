@@ -10,7 +10,7 @@ from . import store
 from .config import load_companies, save_companies
 from .filters import Scorer
 from .net import Fetcher
-from .resolve import learn_from_url
+from .resolve import board_name, learn_from_url
 from .sources import FEED_FETCHERS, FETCHERS
 
 
@@ -82,10 +82,12 @@ def scan(
             progress(message)
 
     scorer = Scorer(cfg["title_rules"], cfg["negative_rules"])
-    companies = [c for c in load_companies() if c.get("enabled", True)]
+    all_companies = load_companies()
+    companies = [c for c in all_companies if c.get("enabled", True)]
     cache = int(cfg.get("cache_minutes", 0) if cache_minutes is None else cache_minutes)
     report = ScanReport(companies=len(companies), feeds=len(cfg.get("feeds") or []))
-    known = {(c["ats"], c["token"]) for c in companies}
+    # Known boards include the disabled ones: `enabled: false` means "mute", not "re-discover".
+    known = {(c["ats"].lower(), c["token"].lower()) for c in all_companies}
     sources = _source_list(cfg, companies)
     if only:
         sources = [s for s in sources if s[0] == only or s[0].startswith(only)]
@@ -110,19 +112,19 @@ def scan(
             for job in jobs:
                 if learn:
                     found = learn_from_url(job.url)
-                    if found and found not in known:
-                        known.add(found)
-                        companies.append(
-                            {
-                                "name": job.company or found[1],
-                                "ats": found[0],
-                                "token": found[1],
-                                "market": "",
-                                "tier": "",
-                                "auto": True,
-                                "enabled": True,
-                            }
-                        )
+                    if found and (found[0].lower(), found[1].lower()) not in known:
+                        known.add((found[0].lower(), found[1].lower()))
+                        entry = {
+                            "name": board_name(job.company, found[1]),
+                            "ats": found[0],
+                            "token": found[1],
+                            "market": "",
+                            "tier": "",
+                            "auto": True,
+                            "enabled": True,
+                        }
+                        companies.append(entry)
+                        all_companies.append(entry)
                         report.learned.append({"ats": found[0], "token": found[1], "name": job.company, "from": job.url})
                 match = scorer.match(job)
                 if match.score < int(cfg.get("min_score", 3)):
@@ -135,6 +137,6 @@ def scan(
     new, seen = store.upsert(conn, batch)
     report.new, report.seen = new, seen
     if report.learned:
-        save_companies(companies)
+        save_companies(all_companies)
         announce(f"watchlist updated: +{len(report.learned)} board(s)")
     return report

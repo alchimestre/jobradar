@@ -304,6 +304,13 @@ companies:
   tier: ''
   auto: false
   enabled: true
+- name: Hetzner
+  ats: recruitee
+  token: hetzner
+  market: other
+  tier: ''
+  auto: false
+  enabled: true
 - name: Inceptive
   ats: greenhouse
   token: inceptive
@@ -507,13 +514,6 @@ companies:
   tier: ''
   auto: false
   enabled: true
-- name: Personio
-  ats: recruitee
-  token: personio
-  market: de
-  tier: ''
-  auto: false
-  enabled: true
 - name: Photoroom
   ats: ashby
   token: photoroom
@@ -675,6 +675,13 @@ companies:
   tier: ''
   auto: false
   enabled: true
+- name: Swisscom
+  ats: recruitee
+  token: swisscom
+  market: other
+  tier: ''
+  auto: false
+  enabled: true
 - name: Synthesia
   ats: ashby
   token: synthesia
@@ -759,6 +766,13 @@ companies:
   tier: ''
   auto: false
   enabled: true
+- name: xneelo
+  ats: recruitee
+  token: xneelo
+  market: ''
+  tier: ''
+  auto: true
+  enabled: false
 - name: Zeta Global
   ats: greenhouse
   token: zetaglobal

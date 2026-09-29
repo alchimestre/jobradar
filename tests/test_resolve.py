@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from jobradar.resolve import learn_from_url, variants
+from jobradar.resolve import board_name, learn_from_url, variants
 
 
 @pytest.mark.parametrize(
@@ -36,6 +36,21 @@ def test_known_ats_urls_resolve(url: str, expected: tuple[str, str]) -> None:
 )
 def test_non_ats_urls_return_nothing(url: str) -> None:
     assert learn_from_url(url) is None
+
+
+@pytest.mark.parametrize(
+    ("company", "token", "expected"),
+    [
+        ("vCluster Labs", "vClusterLabs", "vCluster Labs"),
+        ("NewCo", "newco", "NewCo"),
+        ("Hetzner", "xneelo", "xneelo"),      # subsidiary board reached from a group feed
+        ("", "gitlab", "gitlab"),
+    ],
+)
+def test_board_name_prefers_the_employer_only_when_it_matches_the_slug(
+    company: str, token: str, expected: str
+) -> None:
+    assert board_name(company, token) == expected
 
 
 def test_variants_cover_squashed_and_dashed_forms() -> None:

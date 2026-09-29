@@ -132,6 +132,7 @@ def query(
     min_score: int | None = None,
     since_seconds: int | None = None,
     search: str | None = None,
+    reason: str | None = None,
     limit: int = 500,
 ) -> list[sqlite3.Row]:
     where, params = ["1=1"], []
@@ -153,6 +154,9 @@ def query(
     if search:
         where.append("(company LIKE ? OR title LIKE ? OR location LIKE ?)")
         params += [f"%{search}%"] * 3
+    if reason:
+        where.append("reasons LIKE ?")
+        params.append(f"%{reason}%")
     params.append(limit)
     sql = (
         "SELECT * FROM jobs WHERE "

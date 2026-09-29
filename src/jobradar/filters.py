@@ -16,7 +16,15 @@ def _rules(entries) -> list[tuple[re.Pattern, int, str]]:
     return [(re.compile(p, re.I), int(w), t) for p, w, t in entries]
 
 
-HARD_NEGATIVES = {"intern", "leadership", "non-ic", "go-to-market", "off-target", "seniority-stretch"}
+HARD_NEGATIVES = {
+    "intern",
+    "leadership",
+    "non-ic",
+    "go-to-market",
+    "non-engineering",
+    "off-target",
+    "seniority-stretch",
+}
 
 
 class Scorer:
@@ -74,11 +82,12 @@ class Scorer:
         else:
             decision = "low"
         lane = self.lane(job)
-        # "high" means in-lane and worth acting on today; a strong title outside every
-        # target lane stays visible as "review" instead of jumping the queue.
-        if decision == "high" and lane == "other":
+        # "high" means in-lane and worth acting on today: a strong title outside every
+        # target lane, or a remote posting that excludes Europe, stays visible as
+        # "review" instead of jumping the queue.
+        if decision == "high" and (lane == "other" or scope == "restricted"):
             decision = "review"
-            reasons.append("-off-lane")
+            reasons.append("-off-lane" if lane == "other" else "-out-of-scope")
         return Match(score=score, decision=decision, lane=lane, reasons=reasons, scope=scope)
 
 

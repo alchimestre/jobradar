@@ -10,6 +10,13 @@ companies:
   tier: ''
   auto: false
   enabled: true
+- name: 21Shares
+  ats: greenhouse
+  token: 21Shares
+  market: other
+  tier: ''
+  auto: false
+  enabled: true
 - name: Airbyte
   ats: ashby
   token: airbyte
@@ -24,9 +31,30 @@ companies:
   tier: ''
   auto: false
   enabled: true
+- name: Alchemy
+  ats: ashby
+  token: Alchemy
+  market: other
+  tier: ''
+  auto: false
+  enabled: true
 - name: Aleph Alpha
   ats: ashby
   token: alephalpha
+  market: other
+  tier: ''
+  auto: false
+  enabled: true
+- name: Amber Group
+  ats: ashby
+  token: Amber
+  market: de
+  tier: ''
+  auto: false
+  enabled: true
+- name: Anchorage Digital
+  ats: lever
+  token: anchorage
   market: other
   tier: ''
   auto: false
@@ -41,6 +69,13 @@ companies:
 - name: Anyscale
   ats: lever
   token: anyscale
+  market: other
+  tier: ''
+  auto: false
+  enabled: true
+- name: Aptos Labs
+  ats: greenhouse
+  token: AptosLabs
   market: other
   tier: ''
   auto: false
@@ -66,6 +101,34 @@ companies:
   tier: ''
   auto: false
   enabled: true
+- name: Binance
+  ats: greenhouse
+  token: Binance
+  market: other
+  tier: ''
+  auto: false
+  enabled: true
+- name: BitGo
+  ats: greenhouse
+  token: BitGo
+  market: other
+  tier: ''
+  auto: false
+  enabled: true
+- name: Bitpanda
+  ats: greenhouse
+  token: Bitpanda
+  market: other
+  tier: ''
+  auto: false
+  enabled: true
+- name: Bitvavo
+  ats: ashby
+  token: Bitvavo
+  market: other
+  tier: ''
+  auto: false
+  enabled: true
 - name: BlaBlaCar
   ats: lever
   token: blablacar
@@ -77,6 +140,27 @@ companies:
   ats: ashby
   token: black-forest-labs
   market: de
+  tier: ''
+  auto: false
+  enabled: true
+- name: Blockdaemon
+  ats: ashby
+  token: Blockdaemon
+  market: eu-remote
+  tier: ''
+  auto: false
+  enabled: true
+- name: Blockstream
+  ats: ashby
+  token: blockstream
+  market: other
+  tier: ''
+  auto: false
+  enabled: true
+- name: Bybit
+  ats: greenhouse
+  token: Bybit
+  market: other
   tier: ''
   auto: false
   enabled: true
@@ -98,6 +182,13 @@ companies:
   ats: greenhouse
   token: celonis
   market: other
+  tier: ''
+  auto: false
+  enabled: true
+- name: Circle
+  ats: ashby
+  token: Circle
+  market: eu-remote
   tier: ''
   auto: false
   enabled: true
@@ -129,10 +220,31 @@ companies:
   tier: ''
   auto: false
   enabled: true
+- name: Coinbase
+  ats: greenhouse
+  token: Coinbase
+  market: eu-remote
+  tier: ''
+  auto: false
+  enabled: true
+- name: Compound Labs
+  ats: ashby
+  token: Compound
+  market: eu-remote
+  tier: ''
+  auto: false
+  enabled: true
 - name: Confluent
   ats: ashby
   token: confluent
   market: eu-remote
+  tier: ''
+  auto: false
+  enabled: true
+- name: Consensys
+  ats: ashby
+  token: Consensys
+  market: other
   tier: ''
   auto: false
   enabled: true
@@ -227,6 +339,20 @@ companies:
   tier: ''
   auto: false
   enabled: true
+- name: Dune
+  ats: ashby
+  token: Dune
+  market: eu-remote
+  tier: ''
+  auto: false
+  enabled: true
+- name: Eigen Labs
+  ats: ashby
+  token: Eigen-Labs
+  market: eu-remote
+  tier: ''
+  auto: false
+  enabled: true
 - name: Elastic
   ats: greenhouse
   token: elastic
@@ -241,10 +367,31 @@ companies:
   tier: ''
   auto: false
   enabled: true
+- name: Elliptic
+  ats: ashby
+  token: Elliptic
+  market: other
+  tier: ''
+  auto: false
+  enabled: true
 - name: Enpal
   ats: ashby
   token: enpal
   market: de
+  tier: ''
+  auto: false
+  enabled: true
+- name: Espresso Systems
+  ats: ashby
+  token: Espresso
+  market: other
+  tier: ''
+  auto: false
+  enabled: true
+- name: Fireblocks
+  ats: greenhouse
+  token: Fireblocks
+  market: other
   tier: ''
   auto: false
   enabled: true
@@ -258,6 +405,20 @@ companies:
 - name: Frontify
   ats: ashby
   token: frontify
+  market: other
+  tier: ''
+  auto: false
+  enabled: true
+- name: Galaxy Digital
+  ats: greenhouse
+  token: Galaxy
+  market: other
+  tier: ''
+  auto: false
+  enabled: true
+- name: Gelato
+  ats: ashby
+  token: Gelato
   market: other
   tier: ''
   auto: false
@@ -280,6 +441,13 @@ companies:
   ats: smartrecruiters
   token: glean
   market: other
+  tier: ''
+  auto: false
+  enabled: true
+- name: Gnosis
+  ats: personio
+  token: Gnosis
+  market: eu-remote
   tier: ''
   auto: false
   enabled: true
@@ -311,6 +479,13 @@ companies:
   tier: ''
   auto: false
   enabled: true
+- name: Immunefi
+  ats: greenhouse
+  token: Immunefi
+  market: eu-remote
+  tier: ''
+  auto: false
+  enabled: true
 - name: Inceptive
   ats: greenhouse
   token: inceptive
@@ -339,10 +514,31 @@ companies:
   tier: ''
   auto: false
   enabled: true
+- name: Kaiko
+  ats: personio
+  token: Kaiko
+  market: other
+  tier: ''
+  auto: false
+  enabled: true
 - name: Kestra
   ats: ashby
   token: kestra
   market: other
+  tier: ''
+  auto: false
+  enabled: true
+- name: Keyrock
+  ats: ashby
+  token: Keyrock
+  market: other
+  tier: ''
+  auto: false
+  enabled: true
+- name: kraken.com
+  ats: ashby
+  token: kraken.com
+  market: ''
   tier: ''
   auto: false
   enabled: true
@@ -416,6 +612,13 @@ companies:
   tier: ''
   auto: false
   enabled: true
+- name: Matter Labs
+  ats: ashby
+  token: Matter-Labs
+  market: other
+  tier: ''
+  auto: false
+  enabled: true
 - name: Mirakl
   ats: greenhouse
   token: mirakl
@@ -434,6 +637,13 @@ companies:
   ats: greenhouse
   token: mongodb
   market: other
+  tier: ''
+  auto: false
+  enabled: true
+- name: Mysten Labs
+  ats: ashby
+  token: MystenLabs
+  market: eu-remote
   tier: ''
   auto: false
   enabled: true
@@ -458,10 +668,24 @@ companies:
   tier: ''
   auto: false
   enabled: true
+- name: Nansen
+  ats: ashby
+  token: Nansen
+  market: eu-remote
+  tier: ''
+  auto: false
+  enabled: true
 - name: Nebius
   ats: greenhouse
   token: nebius
   market: other
+  tier: ''
+  auto: false
+  enabled: true
+- name: Nethermind
+  ats: ashby
+  token: Nethermind
+  market: eu-remote
   tier: ''
   auto: false
   enabled: true
@@ -479,10 +703,45 @@ companies:
   tier: ''
   auto: false
   enabled: true
+- name: Nomic Foundation
+  ats: ashby
+  token: Nomic
+  market: other
+  tier: ''
+  auto: false
+  enabled: true
+- name: OKX
+  ats: greenhouse
+  token: OKX
+  market: other
+  tier: ''
+  auto: false
+  enabled: true
+- name: OP Labs
+  ats: ashby
+  token: OPLabs
+  market: other
+  tier: ''
+  auto: false
+  enabled: true
+- name: OpenZeppelin
+  ats: greenhouse
+  token: OpenZeppelin
+  market: eu-remote
+  tier: ''
+  auto: false
+  enabled: true
 - name: Owkin
   ats: ashby
   token: owkin
   market: fr
+  tier: ''
+  auto: false
+  enabled: true
+- name: Parity Technologies
+  ats: ashby
+  token: Parity
+  market: eu-remote
   tier: ''
   auto: false
   enabled: true
@@ -528,6 +787,13 @@ companies:
   tier: ''
   auto: false
   enabled: true
+- name: Polygon Labs
+  ats: ashby
+  token: Polygon-Labs
+  market: eu-remote
+  tier: ''
+  auto: false
+  enabled: true
 - name: Poolside
   ats: ashby
   token: poolside
@@ -570,6 +836,13 @@ companies:
   tier: ''
   auto: false
   enabled: true
+- name: QuickNode
+  ats: ashby
+  token: QuickNode
+  market: other
+  tier: ''
+  auto: false
+  enabled: true
 - name: Raisin
   ats: greenhouse
   token: raisin
@@ -587,6 +860,13 @@ companies:
 - name: Replit
   ats: ashby
   token: replit
+  market: other
+  tier: ''
+  auto: false
+  enabled: true
+- name: Ripple
+  ats: greenhouse
+  token: Ripple
   market: other
   tier: ''
   auto: false
@@ -615,6 +895,13 @@ companies:
 - name: Scandit
   ats: greenhouse
   token: scandit
+  market: other
+  tier: ''
+  auto: false
+  enabled: true
+- name: Scroll
+  ats: personio
+  token: Scroll
   market: other
   tier: ''
   auto: false
@@ -675,6 +962,13 @@ companies:
   tier: ''
   auto: false
   enabled: true
+- name: SwissBorg
+  ats: lever
+  token: swissborg
+  market: eu-remote
+  tier: ''
+  auto: false
+  enabled: true
 - name: Swisscom
   ats: recruitee
   token: swisscom
@@ -692,6 +986,13 @@ companies:
 - name: Temporal
   ats: ashby
   token: temporal
+  market: other
+  tier: ''
+  auto: false
+  enabled: true
+- name: Tenderly
+  ats: ashby
+  token: Tenderly
   market: other
   tier: ''
   auto: false
@@ -714,6 +1015,27 @@ companies:
   ats: greenhouse
   token: traderepublic
   market: de
+  tier: ''
+  auto: false
+  enabled: true
+- name: TRM Labs
+  ats: ashby
+  token: TRM-Labs
+  market: other
+  tier: ''
+  auto: false
+  enabled: true
+- name: Turnkey
+  ats: ashby
+  token: Turnkey
+  market: other
+  tier: ''
+  auto: false
+  enabled: true
+- name: Uniswap Labs
+  ats: ashby
+  token: Uniswap
+  market: other
   tier: ''
   auto: false
   enabled: true

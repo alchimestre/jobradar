@@ -75,6 +75,7 @@ def cmd_list(args) -> int:
         min_score=args.min_score,
         since_seconds=_since(args.since),
         search=args.search,
+        reason=getattr(args, "reason", None),
         limit=args.limit,
     )
     if args.json:
@@ -162,22 +163,28 @@ def cmd_open(args) -> int:
 
 
 def cmd_discover(args) -> int:
+    import json as _json
+
     from .resolve import probe
 
-    existing = {(c["ats"], c["token"]) for c in load_companies()}
+    existing = {(c["ats"], c["token"].lower()) for c in load_companies()}
     added, hits = [], []
     for target in args.targets:
         found = probe(target)
         if not found:
-            print(f"  no ATS board found for {target!r}")
+            if not args.json:
+                print(f"  no ATS board found for {target!r}")
             continue
         for hit in found:
             hits.append(hit)
-            key = (hit["ats"], hit["token"])
-            print(
-                f"  {hit['name']}: {hit['ats']}:{hit['token']} — {hit['jobs_count']} jobs "
-                f"(e.g. {hit['sample_title']!r} / {hit['sample_location']})"
-            )
+            key = (hit["ats"], hit["token"].lower())
+            if args.json:
+                print(_json.dumps({**hit, "target": target}))
+            else:
+                print(
+                    f"  {hit['name']}: {hit['ats']}:{hit['token']} — {hit['jobs_count']} jobs "
+                    f"(e.g. {hit['sample_title']!r} / {hit['sample_location']})"
+                )
             if key in existing:
                 continue
             existing.add(key)
@@ -185,7 +192,7 @@ def cmd_discover(args) -> int:
     if args.write and added:
         path = save_companies(load_companies() + added)
         print(f"watchlist updated: +{len(added)} → {path}")
-    elif added:
+    elif added and not args.json:
         print(f"({len(added)} new board(s); re-run with --write to add them to the watchlist)")
     return 0 if hits else 1
 
@@ -282,6 +289,20 @@ def cmd_import(args) -> int:
     return 0
 
 
+def cmd_rescore(args) -> int:
+    from .scan import rescore as _rescore
+
+    cfg = load_config()
+    conn = store.connect(_db_path(cfg))
+    result = _rescore(cfg, conn, prune=args.prune)
+    line = f"rescored {result['rescored']} postings against the current rules (floor {result['floor']})"
+    if args.prune:
+        line += f"; pruned {result['pruned']} untouched below-floor rows"
+    print(line)
+    print(store.counts(conn)["by_decision"])
+    return 0
+
+
 def cmd_sources(args) -> int:
     cfg = load_config()
     conn = store.connect(_db_path(cfg))
@@ -326,6 +347,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--min-score", type=int)
     p.add_argument("--since", help="e.g. 12h, 7d, 2w")
     p.add_argument("--search")
+    p.add_argument("--reason", help="filter on a scoring reason tag, e.g. blockchain / mlops / k8s")
     p.add_argument("--limit", type=int, default=200)
     p.add_argument("--json", action="store_true")
     p.set_defaults(func=cmd_list)
@@ -349,6 +371,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("targets", nargs="+")
     p.add_argument("--write", action="store_true", help="append verified boards to the watchlist")
     p.add_argument("--market", help="market label to write with --write")
+    p.add_argument("--json", action="store_true", help="emit one JSON object per verified board")
     p.set_defaults(func=cmd_discover)
 
     p = sub.add_parser("export", help="markdown export for the pipeline tracker")
@@ -363,6 +386,10 @@ def main(argv: list[str] | None = None) -> int:
 
     p = sub.add_parser("sources", help="show sources and their last fetch")
     p.set_defaults(func=cmd_sources)
+
+    p = sub.add_parser("rescore", help="re-score stored postings after tuning the rules (no network)")
+    p.add_argument("--prune", action="store_true", help="delete below-floor postings never acted on")
+    p.set_defaults(func=cmd_rescore)
 
     p = sub.add_parser("import", help="validate a seed file of name/ats/token rows and merge the working ones")
     p.add_argument("seed")

@@ -1,0 +1,64 @@
+# jobradar config — every key is optional; defaults live in src/jobradar/config.py.
+# Delete a key to fall back to the default.
+
+db: .jobradar/state.db
+companies_file: companies.yaml
+timeout: 25
+min_score: 3          # postings scoring below this are not stored at all
+cache_minutes: 0      # >0 skips a source that was fetched within N minutes
+
+# Aggregator feeds. type: rss | remoteok | arbeitnow | hn
+# Add a `company: <name>` to an rss entry when the feed title is not the employer.
+feeds:
+  - name: hn-whoishiring
+    type: hn
+    url: https://hn.algolia.com/api/v1/search_by_date?tags=story,author_whoishiring&hitsPerPage=6
+  - name: weworkremotely-devops
+    type: rss
+    url: https://weworkremotely.com/categories/remote-devops-sysadmin-jobs.rss
+  - name: euremotejobs
+    type: rss
+    url: https://euremotejobs.com/feed/
+  - name: swissdevjobs
+    type: rss
+    url: https://swissdevjobs.ch/rss
+  - name: germantechjobs
+    type: rss
+    url: https://germantechjobs.de/rss
+  - name: remoteok
+    type: remoteok
+    url: https://remoteok.com/api
+  - name: arbeitnow
+    type: arbeitnow
+    url: https://www.arbeitnow.com/api/job-board-api
+
+# Scoring. [regex, weight, tag]. Hard negatives (see HARD_NEGATIVES in filters.py)
+# always apply; soft ones only apply when no strong target title is present.
+title_rules:
+  - ["\\bml ?ops\\b", 6, mlops]
+  - ["\\bml ?platform\\b", 6, ml-platform]
+  - ["\\bmachine learning platform\\b", 6, ml-platform]
+  - ["\\bml ?infrastructure\\b", 6, ml-infra]
+  - ["\\bai infrastructure\\b", 5, ai-infra]
+  - ["\\bai platform\\b", 5, ai-platform]
+  - ["\\b(ml|ai) (engineer|engineering)\\b", 3, ai-ml]
+  - ["\\bplatform engineer", 4, platform]
+  - ["\\bsite reliability engineer\\b|\\bsre\\b", 3, sre]
+  - ["\\binfrastructure engineer", 3, infra]
+  - ["\\btraining platform\\b|\\binference platform\\b|\\bserving platform\\b", 5, serving]
+  - ["\\bkubernetes\\b|\\bk8s\\b", 2, k8s]
+  - ["\\bdevops\\b", 2, devops]
+  - ["\\bcloud engineer", 2, cloud]
+  - ["\\bforward deployed\\b|\\bdeployment engineer\\b|\\bsolutions engineer\\b", 2, fwd-deployed]
+  - ["\\breliability\\b", 1, reliability]
+  - ["\\bobservability\\b", 1, observability]
+
+negative_rules:
+  - ["\\bintern\\b|\\bworking student\\b|\\bwerkstudent\\b|\\bapprentice", -8, intern]
+  - ["\\b(head|director|vp|chief|president)\\b", -5, leadership]
+  - ["\\bengineering manager\\b|\\bproduct manager\\b|\\bprogram manager\\b", -5, non-ic]
+  - ["\\bsales\\b|\\baccount executive\\b|\\bcustomer success\\b|\\brecruiter\\b|\\bmarketing\\b", -6, go-to-market]
+  - ["\\bfrontend\\b|\\bmobile\\b|\\bios\\b|\\bandroid\\b|\\bqa\\b|\\btest engineer\\b", -5, off-target]
+  - ["\\bdata scientist\\b|\\bdata analyst\\b|\\bbusiness analyst\\b", -4, off-target]
+  - ["\\bdata engineer\\b|\\bdataops\\b|\\banalytics engineer\\b", -2, data-pipeline]
+  - ["\\bstaff\\b|\\bprincipal\\b", -6, seniority-stretch]

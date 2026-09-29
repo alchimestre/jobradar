@@ -63,6 +63,18 @@ def variants(name: str) -> list[str]:
     return out[:6]
 
 
+def board_name(company: str, token: str) -> str:
+    """Label a learned board with the employer when it matches the slug, else the slug.
+
+    A job URL can point at another organisation's board (group/subsidiary boards), so
+    "Hetzner" + token `xneelo` must be labelled `xneelo`, not `Hetzner`.
+    """
+    squashed = re.sub(r"[^a-z0-9]", "", (company or "").lower())
+    if squashed and (token.lower() in squashed or squashed in token.lower()):
+        return company
+    return token
+
+
 def probe(name_or_url: str, fetcher: Fetcher | None = None, ats_filter: tuple[str, ...] = ()) -> list[dict]:
     """Probe public ATS endpoints for a company name or URL.
 

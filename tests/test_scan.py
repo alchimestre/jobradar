@@ -94,6 +94,76 @@ def test_one_broken_board_does_not_stop_the_scan(tmp_path, monkeypatch) -> None:
     assert "1 error" in report.summary()
 
 
+def test_disabled_board_is_neither_fetched_nor_relearned(tmp_path, monkeypatch) -> None:
+    """`enabled: false` means mute: it must not be polled, nor re-added by auto-learning."""
+    monkeypatch.setenv("JOBRADAR_HOME", str(tmp_path))
+    write_watchlist(tmp_path, [{"name": "Muted", "ats": "recruitee", "token": "muted", "enabled": False}])
+    (tmp_path / "config.yaml").write_text(
+        "feeds:\n  - name: fake\n    type: arbeitnow\n    url: http://feed.invalid\n"
+    )
+    payload = {
+        "data": [
+            {
+                "title": "ML Platform Engineer",
+                "company_name": "Muted",
+                "location": "Berlin",
+                "remote": False,
+                "url": "https://muted.recruitee.com/o/platform-engineer",
+                "created_at": 1780000000,
+                "description": "",
+                "tags": [],
+                "job_types": [],
+            }
+        ]
+    }
+    monkeypatch.setattr(scan_mod, "Fetcher", lambda *a, **k: StubFetcher({"http://feed.invalid": payload}))
+    polled = []
+    monkeypatch.setattr(scan_mod, "FETCHERS", {"recruitee": lambda f, t, n: polled.append(t) or []})
+    cfg = load_config()
+    conn = store.connect(tmp_path / "state.db")
+
+    report = scan_mod.scan(cfg, conn)
+
+    assert polled == []
+    assert report.learned == []
+    written = yaml.safe_load((tmp_path / "companies.yaml").read_text())["companies"]
+    assert written[0]["enabled"] is False
+
+
+def test_learning_a_board_keeps_disabled_rows_and_stays_quiet(tmp_path, monkeypatch) -> None:
+    """Auto-learning rewrites the watchlist; muted entries must survive that rewrite."""
+    monkeypatch.setenv("JOBRADAR_HOME", str(tmp_path))
+    write_watchlist(tmp_path, [{"name": "Muted", "ats": "recruitee", "token": "muted", "enabled": False}])
+    (tmp_path / "config.yaml").write_text(
+        "feeds:\n  - name: fake\n    type: arbeitnow\n    url: http://feed.invalid\n"
+    )
+    payload = {
+        "data": [
+            {
+                "title": "ML Platform Engineer",
+                "company_name": "NewCo",
+                "location": "Berlin",
+                "remote": False,
+                "url": "https://jobs.ashbyhq.com/newco/123",
+                "created_at": 1780000000,
+                "description": "",
+                "tags": [],
+                "job_types": [],
+            }
+        ]
+    }
+    monkeypatch.setattr(scan_mod, "Fetcher", lambda *a, **k: StubFetcher({"http://feed.invalid": payload}))
+    monkeypatch.setattr(scan_mod, "FETCHERS", {})
+    cfg = load_config()
+    conn = store.connect(tmp_path / "state.db")
+
+    scan_mod.scan(cfg, conn)
+
+    written = {c["token"]: c for c in yaml.safe_load((tmp_path / "companies.yaml").read_text())["companies"]}
+    assert written["muted"]["enabled"] is False
+    assert written["newco"]["auto"] is True
+
+
 def test_scan_skips_sources_fetched_within_the_cache_window(tmp_path, monkeypatch) -> None:
     monkeypatch.setenv("JOBRADAR_HOME", str(tmp_path))
     write_watchlist(tmp_path, [{"name": "Good", "ats": "ashby", "token": "good"}])

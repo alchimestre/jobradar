@@ -14,6 +14,13 @@ timeout: 25
 min_score: 3          # postings scoring below this are not stored at all
 cache_minutes: 0      # >0 skips a source that was fetched within N minutes
 
+# Admission scope. JD language is detected from the description (umlauts/stopwords),
+# geography from the location string. Anything outside these lists is stored with
+# decision "out" — visible via `jobradar list --decision out`, never shown by default.
+#   languages: en | fr | de | unknown      regions: eu | emea | au | americas | apac | unknown
+allowed_languages: [en, fr, unknown]
+allowed_regions: [eu, emea, au, unknown]
+
 # Aggregator feeds. type: rss | remoteok | arbeitnow | hn
 # Add a `company: <name>` to an rss entry when the feed title is not the employer.
 feeds:

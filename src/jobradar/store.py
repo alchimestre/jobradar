@@ -26,6 +26,8 @@ CREATE TABLE IF NOT EXISTS jobs (
     lane        TEXT NOT NULL DEFAULT 'other',
     reasons     TEXT NOT NULL DEFAULT '',
     scope       TEXT NOT NULL DEFAULT 'ok',
+    region      TEXT NOT NULL DEFAULT 'unknown',
+    language    TEXT NOT NULL DEFAULT 'unknown',
     status      TEXT NOT NULL DEFAULT 'new',
     first_seen  INTEGER NOT NULL,
     last_seen   INTEGER NOT NULL,
@@ -51,6 +53,10 @@ def connect(db: str | pathlib.Path) -> sqlite3.Connection:
     conn = sqlite3.connect(path, timeout=30)
     conn.row_factory = sqlite3.Row
     conn.executescript(SCHEMA)
+    existing = {row[1] for row in conn.execute("PRAGMA table_info(jobs)")}
+    for column in ("region", "language"):
+        if column not in existing:
+            conn.execute(f"ALTER TABLE jobs ADD COLUMN {column} TEXT NOT NULL DEFAULT 'unknown'")
     # WAL + busy_timeout: the TUI reads on the main thread while workers write.
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA busy_timeout=30000")
@@ -71,13 +77,14 @@ def upsert(conn: sqlite3.Connection, jobs: Iterable[tuple[Job, Match]]) -> tuple
         if row is None:
             conn.execute(
                 """INSERT INTO jobs (uid, company, title, location, url, sources, published,
-                       remote, description, score, decision, lane, reasons, scope, first_seen, last_seen)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                       remote, description, score, decision, lane, reasons, scope, region, language,
+                       first_seen, last_seen)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (
                     job.uid, job.company, job.title, job.location, job.url, job.source,
                     job.published, -1 if job.remote is None else int(job.remote),
                     job.description[:4000], match.score, match.decision, match.lane,
-                    ",".join(match.reasons[:6]), match.scope, now, now,
+                    ",".join(match.reasons[:6]), match.scope, match.region, match.language, now, now,
                 ),
             )
             new += 1
@@ -91,6 +98,7 @@ def upsert(conn: sqlite3.Connection, jobs: Iterable[tuple[Job, Match]]) -> tuple
             conn.execute(
                 """UPDATE jobs SET last_seen = ?, sources = ?, location = ?,
                        score = ?, decision = ?, lane = ?, reasons = ?, scope = ?,
+                       region = ?, language = ?,
                        remote = ?, url = CASE WHEN url = '' THEN ? ELSE url END,
                        description = CASE WHEN description = '' THEN ? ELSE description END
                    WHERE uid = ?""",
@@ -101,6 +109,7 @@ def upsert(conn: sqlite3.Connection, jobs: Iterable[tuple[Job, Match]]) -> tuple
                     match.score if keep_best else row["score"],
                     match.decision if keep_best else row["decision"],
                     match.lane, ",".join(match.reasons[:6]), match.scope,
+                    match.region, match.language,
                     -1 if job.remote is None else int(job.remote), job.url,
                     job.description[:4000], job.uid,
                 ),
@@ -133,18 +142,31 @@ def query(
     since_seconds: int | None = None,
     search: str | None = None,
     reason: str | None = None,
+    region: str | None = None,
+    language: str | None = None,
+    include_out: bool = False,
     limit: int = 500,
 ) -> list[sqlite3.Row]:
     where, params = ["1=1"], []
-    if status:
-        where.append("status = ?")
-        params.append(status)
+    # Out-of-scope rows (wrong region, wrong JD language) are stored for inspection but
+    # never shown by default; asking for them explicitly is how you audit the filter.
     if decision:
         where.append("decision = ?")
         params.append(decision)
+    elif not include_out:
+        where.append("decision != 'out'")
+    if status:
+        where.append("status = ?")
+        params.append(status)
     if lane:
         where.append("lane = ?")
         params.append(lane)
+    if region:
+        where.append("region = ?")
+        params.append(region)
+    if language:
+        where.append("language = ?")
+        params.append(language)
     if min_score is not None:
         where.append("score >= ?")
         params.append(min_score)
@@ -161,7 +183,10 @@ def query(
     sql = (
         "SELECT * FROM jobs WHERE "
         + " AND ".join(where)
-        + " ORDER BY decision = 'high' DESC, score DESC, first_seen DESC, title LIMIT ?"
+        # EU first, then EMEA, then AU/NZ, then anywhere unclassified.
+        + " ORDER BY decision = 'high' DESC,"
+        " CASE region WHEN 'eu' THEN 0 WHEN 'emea' THEN 1 WHEN 'au' THEN 2 ELSE 3 END,"
+        " score DESC, first_seen DESC, title LIMIT ?"
     )
     return conn.execute(sql, params).fetchall()
 
@@ -181,11 +206,17 @@ def counts(conn: sqlite3.Connection) -> dict:
     rows = conn.execute(
         "SELECT decision, status, COUNT(*) n FROM jobs GROUP BY decision, status"
     ).fetchall()
-    out: dict[str, dict[str, int]] = {"by_decision": {}, "by_status": {}}
+    out: dict[str, dict[str, int]] = {"by_decision": {}, "by_status": {}, "by_region": {}, "by_language": {}}
     for row in rows:
         out["by_decision"][row["decision"]] = out["by_decision"].get(row["decision"], 0) + row["n"]
         out["by_status"][row["status"]] = out["by_status"].get(row["status"], 0) + row["n"]
-    out["total"] = conn.execute("SELECT COUNT(*) n FROM jobs").fetchone()["n"]
+    for column, key in (("region", "by_region"), ("language", "by_language")):
+        for row in conn.execute(f"SELECT {column} k, COUNT(*) n FROM jobs GROUP BY {column}"):
+            out[key][row["k"]] = row["n"]
+    total = conn.execute("SELECT COUNT(*) n FROM jobs").fetchone()["n"]
+    out["total"] = total
+    out["out_of_scope"] = out["by_decision"].get("out", 0)
+    out["in_scope"] = total - out["out_of_scope"]
     return out
 
 

@@ -26,6 +26,8 @@ COLUMNS: list[tuple[str, str, int]] = [
     ("company", "company", 20),
     ("title", "title", 42),
     ("location", "location", 18),
+    ("region", "region", 9),
+    ("lang", "lang", 5),
     ("seen", "seen", 10),
 ]
 
@@ -36,7 +38,7 @@ STATUS_STYLE = {
     "rejected": "red",
     "ignored": "dim strike",
 }
-DECISION_STYLE = {"high": "bold cyan", "review": "", "low": "dim"}
+DECISION_STYLE = {"high": "bold cyan", "review": "", "low": "dim", "out": "dim red"}
 
 
 class RadarApp(App):
@@ -94,9 +96,17 @@ class RadarApp(App):
     # ---- data -------------------------------------------------------------
 
     def load_rows(self, keep_uid: str | None = None) -> None:
-        """Reload from the store, keeping the cursor on `keep_uid` when it survives."""
+        """Reload from the store, keeping the cursor on `keep_uid` when it survives.
+
+        Out-of-scope rows (non-EU/EMEA geography, German-language JDs) never appear
+        unless the decision filter is explicitly set to `out`.
+        """
         rows = store.query(
-            self.conn, decision=self.decision, min_score=self.min_score, search=self.search or None, limit=500
+            self.conn,
+            decision=self.decision,
+            min_score=self.min_score,
+            search=self.search or None,
+            limit=500,
         )
         self.jobs = [store.row_to_dict(r) for r in rows]
         table = self.query_one("#jobs", DataTable)
@@ -117,8 +127,9 @@ class RadarApp(App):
         if self.search:
             scope.append(f"search={self.search!r}")
         self.counts_line = (
-            f"{len(self.jobs)} shown · {counts['total']} stored · high {counts['by_decision'].get('high', 0)} · "
+            f"{len(self.jobs)} shown · {counts['in_scope']} in scope · high {counts['by_decision'].get('high', 0)} · "
             f"new {by_status.get('new', 0)} · applied {by_status.get('applied', 0)}"
+            + (f" · {counts['out_of_scope']} out-of-scope hidden (f cycles to them)" if counts["out_of_scope"] else "")
             + (f" · {' '.join(scope)}" if scope else "")
         )
         self.set_status(self.counts_line)
@@ -136,6 +147,8 @@ class RadarApp(App):
             "company": job["company"],
             "title": job["title"],
             "location": job["location"],
+            "region": job["region"],
+            "lang": job["language"],
             "seen": self._date(job["first_seen"]),
         }
 
@@ -210,7 +223,7 @@ class RadarApp(App):
         self.query_one("#jobs", DataTable).focus()
 
     def action_cycle_filter(self) -> None:
-        cycle = {"high": "review", "review": None, None: "high"}
+        cycle = {"high": "review", "review": "out", "out": None, None: "high"}
         self.decision = cycle[self.decision]
         self.load_rows()
 

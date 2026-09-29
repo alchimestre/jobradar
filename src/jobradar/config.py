@@ -68,8 +68,89 @@ LANE_RULES: list[tuple[str, str]] = [
     ("au", r"\b(?:australia|sydney|melbourne|brisbane|perth|adelaide|canberra|auckland|new zealand|wellington)\b"),
 ]
 
-REMOTE_RE = r"\bremote\b|\banywhere\b|\bdistributed\b|home ?office|\bworldwide\b|\bemea\b|\btelework\b"
+# Region classification. In-scope patterns are tested first so a posting that offers
+# both (e.g. "Remote - USA / Remote - EMEA") stays admissible: the candidate can take
+# the European option.
+REGION_IN_SCOPE: list[tuple[str, str]] = [
+    (
+        "au",
+        r"\baustralia\b|\bsydney\b|\bmelbourne\b|\bbrisbane\b|\bperth\b|\badelaide\b|\bcanberra\b|"
+        r"\bnew zealand\b|\bauckland\b|\bwellington\b",
+    ),
+    (
+        "emea",
+        r"\bisrael\b|\btel aviv\b|\bturkey\b|\bistanbul\b|\buae\b|\bdubai\b|\babu dhabi\b|\bsaudi\b|"
+        r"\briyadh\b|\bqatar\b|\bdoha\b|\begypt\b|\bcairo\b|\bsouth africa\b|\bcape town\b|"
+        r"\bjohannesburg\b|\bkenya\b|\bnairobi\b|\bnigeria\b|\blagos\b|\bmorocco\b|\bcasablanca\b|"
+        r"\bjordan\b|\bamman\b|\barmenia\b|\bgeorgia\b|\bazerbaijan\b|\bkazakhstan\b",
+    ),
+    (
+        "eu",
+        r"\bemea\b|\beurope\b|\beuropean union\b|\beu\b|\beea\b|\bschengen\b|"
+        r"\baustria\b|\bbelgium\b|\bbulgaria\b|\bcroatia\b|\bcyprus\b|\bczech\b|\bczechia\b|\bdenmark\b|"
+        r"\bestonia\b|\bfinland\b|\bfrance\b|\bgermany\b|\bgreece\b|\bhungary\b|\biceland\b|\bireland\b|"
+        r"\bitaly\b|\blatvia\b|\blithuania\b|\bluxembourg\b|\bmalta\b|\bnetherlands\b|\bnorway\b|"
+        r"\bpoland\b|\bportugal\b|\bromania\b|\bslovakia\b|\bslovenia\b|\bspain\b|\bsweden\b|"
+        r"\bswitzerland\b|\bswiss\b|\buk\b|\bunited kingdom\b|\bengland\b|\bscotland\b|\bwales\b|"
+        r"\bamsterdam\b|\brotterdam\b|\butrecht\b|\beindhoven\b|\bberlin\b|\bmunich\b|\bm[uü]nchen\b|"
+        r"\bhamburg\b|\bfrankfurt\b|\bstuttgart\b|\bcologne\b|\bk[oö]ln\b|\bd[uü]sseldorf\b|"
+        r"\bleipzig\b|\bdresden\b|\bdarmstadt\b|\bkarlsruhe\b|\bpotsdam\b|\bwalldorf\b|\bparis\b|"
+        r"\blyon\b|\blille\b|\bnantes\b|\bbordeaux\b|\btoulouse\b|\bmarseille\b|\brennes\b|"
+        r"\bgrenoble\b|\bmadrid\b|\bbarcelona\b|\blisbon\b|\bporto\b|\bdublin\b|\bwarsaw\b|\bkrakow\b|"
+        r"\bprague\b|\bbrno\b|\bstockholm\b|\bcopenhagen\b|\bhelsinki\b|\boslo\b|\bvienna\b|\bwien\b|"
+        r"\bz[uü]rich\b|\bzurich\b|\bgeneva\b|\bgeneve\b|\bbasel\b|\bbern\b|\blausanne\b|\bmilan\b|"
+        r"\brome\b|\bbrussels\b|\btallinn\b|\bvilnius\b|\briga\b|\bbudapest\b|\bbucharest\b|\bsofia\b|"
+        r"\bathens\b|\bvalencia\b|\bseville\b|\bbilbao\b|\bmalaga\b|\bcork\b|\bgalway\b|\bedinburgh\b|"
+        r"\bmanchester\b|\bbristol\b|\bcambridge\b|\boxford\b|\blondon\b",
+    ),
+]
 
+REGION_OUT_OF_SCOPE: list[tuple[str, str]] = [
+    (
+        "americas",
+        r"\bunited states\b|\busa\b|\bu\.s\.\b|\bus only\b|\bus-remote\b|\bus based\b|\bamericas\b|"
+        r"\bcanada\b|\btoronto\b|\bvancouver\b|\bmontreal\b|\bottawa\b|\bbrazil\b|\bs[aã]o paulo\b|"
+        r"\bmexico\b|\bargentina\b|\bbuenos aires\b|\bchile\b|\bsantiago\b|\bcolombia\b|\bbogot[aá]\b|"
+        r"\bperu\b|\blima\b|\bcosta rica\b|\bnew york\b|\bsan francisco\b|\bseattle\b|\baustin\b|"
+        r"\bboston\b|\bchicago\b|\bdenver\b|\batlanta\b|\bmiami\b|\blos angeles\b|\bsan jose\b|"
+        r"\bsunnyvale\b|\bpalo alto\b|\bbellevue\b|\bnew jersey\b|\bwashington,? d\.?c\.?\b|"
+        r"\bsan diego\b|\bdallas\b|\bhouston\b|\bphiladelphia\b|\bphoenix\b|\bminneapolis\b|\bd\.?c\.?\b",
+    ),
+    (
+        "apac",
+        r"\bindia\b|\bbangalore\b|\bbengaluru\b|\bhyderabad\b|\bpune\b|\bmumbai\b|\bdelhi\b|"
+        r"\bsingapore\b|\bjapan\b|\btokyo\b|\bchina\b|\bshanghai\b|\bbeijing\b|\bshenzhen\b|"
+        r"\bhong kong\b|\bkorea\b|\bseoul\b|\btaiwan\b|\btaipei\b|\bindonesia\b|\bjakarta\b|"
+        r"\bmalaysia\b|\bkuala lumpur\b|\bthailand\b|\bbangkok\b|\bvietnam\b|\bhanoi\b|"
+        r"\bho chi minh\b|\bphilippines\b|\bmanila\b|\bpakistan\b|\bbangladesh\b",
+    ),
+]
+
+REMOTE_RE = r"\bremote\b|\banywhere\b|\bdistributed\b|home ?office|\bworldwide\b|\bemea\b|\btelework\b"
+WORLDWIDE_RE = r"\bworldwide\b|\banywhere\b|\bglobal\b|\bemea\b|\beurope\b|\beu\b"
+
+# Language detection. Marker counts over title + description; umlauts count triple
+# because they are near-conclusive for German and never appear in English/French JDs.
+GERMAN_MARKERS = (
+    r"\bwir\b|\buns\b|\bunser(e[nmrs]?)?\b|\bdein(e[nmrs]?)?\b|\bdu\b|\bsie\b|\bist\b|\bsind\b|\bund\b|"
+    r"\bmit\b|\bf[uü]r\b|\bbei\b|\bals\b|\bzum\b|\bzur\b|\bvon\b|\bim\b|\bein(e[nmrs]?)?\b|\bnicht\b|"
+    r"\bauch\b|\bkenntnisse\b|\berfahrung\b|\baufgaben\b|\bprofil\b|\bbewerbung\b|\bstellenangebot\b|"
+    r"\bvollzeit\b|\bteilzeit\b|\bunbefristet\b|\bberufserfahrung\b|\bansprechpartner\b|\barbeiten\b|"
+    r"\bsoftwareentwickler\b|\bentwickler\b|\bingenieur\b|\bbetreuer\b|\bmitarbeiter\b|\breferent\b|"
+    r"\bberater\b|\bleiter\b|\bfachbereich\b|\bsystemadministrator\b|\bumgebung\b|\bkenntnisse\b"
+)
+FRENCH_MARKERS = (
+    r"\bnous\b|\bvous\b|\bvotre\b|\bvos\b|\bnotre\b|\bnos\b|\bune\b|\bdes\b|\bles\b|\bpour\b|"
+    r"\bavec\b|\bdans\b|\bsur\b|\best\b|\bsont\b|\bet\b|\baux\b|\bdu\b|\bmissions\b|\bprofil\b|"
+    r"\bcomp[eé]tences\b|\bexp[eé]rience\b|\brejoindre\b|[\u00e9]quipe\b|\bposte\b|\bcontrat\b|"
+    r"\bcdi\b|\bcdd\b|\balternance\b|\bstage\b|\bd[eé]veloppeur\b|\bing[eé]nieur\b|\bresponsable\b|"
+    r"\bcharg[eé]\b|\bsoci[eé]t[eé]\b|\bcandidature\b|\bposte\b|\br[eé]mun[eé]ration\b"
+)
+ENGLISH_MARKERS = (
+    r"\bthe\b|\band\b|\bwith\b|\byou\b|\byour\b|\bwe\b|\bour\b|\bis\b|\bare\b|\bfor\b|\bto\b|"
+    r"\bof\b|\bin\b|\bon\b|\bas\b|\bwill\b|\bhave\b|\bexperience\b|\bteam\b|\brole\b|\bskills\b|"
+    r"\brequirements\b|\bresponsibilities\b|\babout\b|\byou'll\b|\bwe're\b|\bengineering\b"
+)
 SCOPE_BLOCKED_RE = (
     r"united states|usa|u\.s\.|us only|us-remote|americas|canada|latam|brazil|india|"
     r"singapore|japan|china|korea|new york|san francisco|austin|seattle|boston|chicago|"
@@ -87,6 +168,10 @@ DEFAULTS: dict = {
     "cache_minutes": 0,
     "user_agent": "jobradar/0.1 (personal job-search poller)",
     "min_score": 3,
+    # Admission scope: JD language and geography. Anything outside is stored with
+    # decision "out" (inspectable, never shown by default).
+    "allowed_languages": ["en", "fr", "unknown"],
+    "allowed_regions": ["eu", "emea", "au", "unknown"],
     "title_rules": [[p, w, t] for p, w, t in TITLE_RULES],
     "negative_rules": [[p, w, t] for p, w, t in NEGATIVE_RULES],
     "feeds": [

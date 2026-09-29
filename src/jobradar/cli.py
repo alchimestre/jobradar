@@ -76,6 +76,9 @@ def cmd_list(args) -> int:
         since_seconds=_since(args.since),
         search=args.search,
         reason=getattr(args, "reason", None),
+        region=getattr(args, "region", None),
+        language=getattr(args, "language", None),
+        include_out=getattr(args, "include_out", False),
         limit=args.limit,
     )
     if args.json:
@@ -90,6 +93,8 @@ def cmd_list(args) -> int:
             "company": r["company"],
             "title": r["title"],
             "location": r["location"],
+            "region": r["region"],
+            "lang": r["language"],
             "status": r["status"],
             "uid": r["uid"],
         }
@@ -106,6 +111,8 @@ def cmd_list(args) -> int:
                 ("company", 18),
                 ("title", 44),
                 ("location", 20),
+                ("region", 9),
+                ("lang", 5),
                 ("status", 9),
                 ("uid", 16),
             ],
@@ -298,6 +305,7 @@ def cmd_rescore(args) -> int:
     line = f"rescored {result['rescored']} postings against the current rules (floor {result['floor']})"
     if args.prune:
         line += f"; pruned {result['pruned']} untouched below-floor rows"
+    line += f"; {result['out_of_scope']} now out of scope"
     print(line)
     print(store.counts(conn)["by_decision"])
     return 0
@@ -342,12 +350,15 @@ def main(argv: list[str] | None = None) -> int:
 
     p = sub.add_parser("list", help="list stored postings")
     p.add_argument("--status")
-    p.add_argument("--decision", choices=["high", "review", "low"])
+    p.add_argument("--decision", choices=["high", "review", "low", "out"])
     p.add_argument("--lane", choices=["eu-remote", "de", "ch", "fr", "au", "other"])
     p.add_argument("--min-score", type=int)
     p.add_argument("--since", help="e.g. 12h, 7d, 2w")
     p.add_argument("--search")
     p.add_argument("--reason", help="filter on a scoring reason tag, e.g. blockchain / mlops / k8s")
+    p.add_argument("--region", choices=["eu", "emea", "au", "americas", "apac", "unknown"])
+    p.add_argument("--language", choices=["en", "fr", "de", "unknown"])
+    p.add_argument("--include-out", action="store_true", help="include out-of-scope rows (wrong region/JD language)")
     p.add_argument("--limit", type=int, default=200)
     p.add_argument("--json", action="store_true")
     p.set_defaults(func=cmd_list)
@@ -377,7 +388,7 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("export", help="markdown export for the pipeline tracker")
     p.add_argument("--since", default="14d")
     p.add_argument("--min-score", type=int)
-    p.add_argument("--decision", choices=["high", "review", "low"])
+    p.add_argument("--decision", choices=["high", "review", "low", "out"])
     p.add_argument("--lane")
     p.add_argument("--status")
     p.add_argument("--limit", type=int, default=200)
@@ -398,7 +409,7 @@ def main(argv: list[str] | None = None) -> int:
 
     p = sub.add_parser("tui", help="open the terminal UI")
     p.add_argument("--min-score", type=int)
-    p.add_argument("--decision", choices=["high", "review", "low"])
+    p.add_argument("--decision", choices=["high", "review", "low", "out"])
     p.set_defaults(func=cmd_tui)
 
     args = parser.parse_args(argv)

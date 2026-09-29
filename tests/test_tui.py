@@ -95,6 +95,44 @@ def test_ignored_rows_are_styled_and_not_dropped(tmp_path) -> None:
     asyncio.run(scenario())
 
 
+def test_out_of_scope_postings_are_hidden_until_asked_for(tmp_path) -> None:
+    db = tmp_path / "state.db"
+    conn = store.connect(db)
+    store.upsert(
+        conn,
+        [
+            (
+                Job(company="Acme", title="ML Platform Engineer", url="https://a/1", source="x", location="Berlin"),
+                Match(score=12, decision="high", lane="de", region="eu", language="en"),
+            ),
+            (
+                Job(company="US Corp", title="Platform Engineer", url="https://a/2", source="x", location="Remote - USA"),
+                Match(score=6, decision="out", lane="other", region="americas", language="en", reasons=["-region-americas"]),
+            ),
+        ],
+    )
+    conn.close()
+    app = app_for(db)
+
+    async def scenario() -> None:
+        async with app.run_test() as pilot:
+            await pilot.pause()
+            table = app.query_one("#jobs", DataTable)
+            assert table.row_count == 1
+            assert "out-of-scope hidden" in app.status_message
+
+            # the filter cycle reaches the out-of-scope bucket
+            app.action_cycle_filter()  # high
+            app.action_cycle_filter()  # review
+            app.action_cycle_filter()  # out
+            await pilot.pause()
+            assert app.decision == "out"
+            assert table.row_count == 1
+            assert app.jobs[0]["company"] == "US Corp"
+
+    asyncio.run(scenario())
+
+
 def test_scan_worker_uses_a_connection_usable_from_its_thread(tmp_path, monkeypatch) -> None:
     """Regression: the scan worker used the main thread's sqlite connection."""
     db = tmp_path / "state.db"

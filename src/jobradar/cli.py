@@ -133,11 +133,20 @@ def cmd_show(args) -> int:
 
 
 def cmd_mark(args) -> int:
+    from .hooks import run_hook
+
     cfg = load_config()
     conn = store.connect(_db_path(cfg))
-    ok = store.set_status(conn, args.uid, args.status, args.note or "")
-    print(f"{args.uid} -> {args.status}" if ok else f"no job with uid {args.uid}")
-    return 0 if ok else 1
+    if not store.set_status(conn, args.uid, args.status, args.note or ""):
+        print(f"no job with uid {args.uid}", file=sys.stderr)
+        return 1
+    row = store.get(conn, args.uid)
+    print(f"{args.uid} -> {args.status}  ({row['company']} — {row['title']})")
+    if args.no_hook:
+        return 0
+    ok, message = run_hook(args.status, cfg, store.row_to_dict(row))
+    print(f"hook[{args.status}]: {'ok' if ok else 'FAILED'} — {message}")
+    return 0 if ok else 2
 
 
 def cmd_open(args) -> int:
@@ -329,6 +338,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("uid")
     p.add_argument("status", choices=list(store.STATUSES))
     p.add_argument("--note")
+    p.add_argument("--no-hook", action="store_true", help="do not run the status hook")
     p.set_defaults(func=cmd_mark)
 
     p = sub.add_parser("open", help="open a posting in the browser")

@@ -1,0 +1,9 @@
+# jobradar local state
+.jobradar/
+state.db
+exports/
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+.DS_Store

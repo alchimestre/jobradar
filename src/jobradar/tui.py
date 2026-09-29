@@ -5,6 +5,7 @@ from __future__ import annotations
 import time
 import webbrowser
 
+from rich.text import Text
 from textual import work
 from textual.app import App, ComposeResult
 from textual.widgets import DataTable, Footer, Header, Input, Static
@@ -12,18 +13,30 @@ from textual.widgets import DataTable, Footer, Header, Input, Static
 from . import store
 from .cli import _db_path
 from .config import load_config, root
+from .hooks import NO_HOOK, run_hook
 from .scan import scan
 
+# `status` sits near the front on purpose: it is the column the user changes, and it
+# used to fall off the right edge of any terminal narrower than ~127 columns.
 COLUMNS: list[tuple[str, str, int]] = [
-    ("dec", "dec", 6),
-    ("score", "score", 5),
-    ("lane", "lane", 9),
-    ("company", "company", 20),
-    ("title", "title", 46),
-    ("location", "location", 20),
+    ("dec", "dec", 5),
     ("status", "status", 9),
+    ("lane", "lane", 9),
+    ("score", "score", 5),
+    ("company", "company", 20),
+    ("title", "title", 42),
+    ("location", "location", 18),
     ("seen", "seen", 10),
 ]
+
+STATUS_STYLE = {
+    "new": "dim",
+    "shortlist": "bold yellow",
+    "applied": "bold green",
+    "rejected": "red",
+    "ignored": "dim strike",
+}
+DECISION_STYLE = {"high": "bold cyan", "review": "", "low": "dim"}
 
 
 class RadarApp(App):
@@ -60,6 +73,7 @@ class RadarApp(App):
         self.decision = decision
         self.search = ""
         self.status_message = ""
+        self.counts_line = ""
         self.jobs: list[dict] = []
         self.conn = store.connect(self.db)
 
@@ -79,27 +93,22 @@ class RadarApp(App):
 
     # ---- data -------------------------------------------------------------
 
-    def load_rows(self) -> None:
+    def load_rows(self, keep_uid: str | None = None) -> None:
+        """Reload from the store, keeping the cursor on `keep_uid` when it survives."""
         rows = store.query(
             self.conn, decision=self.decision, min_score=self.min_score, search=self.search or None, limit=500
         )
         self.jobs = [store.row_to_dict(r) for r in rows]
         table = self.query_one("#jobs", DataTable)
         table.clear()
-        for job in self.jobs:
-            seen = self._date(job["first_seen"])
-            values = {
-                "dec": job["decision"],
-                "score": str(job["score"]),
-                "lane": job["lane"],
-                "company": job["company"],
-                "title": job["title"],
-                "location": job["location"],
-                "status": job["status"],
-                "seen": seen,
-            }
+        target: int | None = None
+        for index, job in enumerate(self.jobs):
+            values = self._cells(job)
             table.add_row(*[values[key] for key, _, _ in COLUMNS], key=job["uid"])
+            if keep_uid and job["uid"] == keep_uid:
+                target = index
         counts = store.counts(self.conn)
+        by_status = counts["by_status"]
         scope = []
         if self.decision:
             scope.append(f"decision={self.decision}")
@@ -107,18 +116,31 @@ class RadarApp(App):
             scope.append(f"min_score={self.min_score}")
         if self.search:
             scope.append(f"search={self.search!r}")
-        self.set_status(
-            f"{len(self.jobs)} shown · {counts['total']} stored · "
-            f"high {counts['by_decision'].get('high', 0)} · new {counts['by_status'].get('new', 0)}"
+        self.counts_line = (
+            f"{len(self.jobs)} shown · {counts['total']} stored · high {counts['by_decision'].get('high', 0)} · "
+            f"new {by_status.get('new', 0)} · applied {by_status.get('applied', 0)}"
             + (f" · {' '.join(scope)}" if scope else "")
         )
-        if self.jobs:
+        self.set_status(self.counts_line)
+        if target is not None:
+            table.move_cursor(row=target)
+        elif self.jobs:
             self.show_detail(0)
+
+    def _cells(self, job: dict) -> dict:
+        return {
+            "dec": Text(job["decision"], style=DECISION_STYLE.get(job["decision"], "")),
+            "status": Text(job["status"], style=STATUS_STYLE.get(job["status"], "")),
+            "lane": job["lane"],
+            "score": str(job["score"]),
+            "company": job["company"],
+            "title": job["title"],
+            "location": job["location"],
+            "seen": self._date(job["first_seen"]),
+        }
 
     @staticmethod
     def _date(epoch: int) -> str:
-        import time
-
         return time.strftime("%Y-%m-%d", time.localtime(epoch))
 
     def current(self) -> dict | None:
@@ -139,7 +161,7 @@ class RadarApp(App):
         detail = (
             f"[b]{job['company']} — {job['title']}[/b]\n"
             f"{job['url']}\n"
-            f"lane={job['lane']} score={job['score']} scope={job['scope']} "
+            f"status={job['status']} lane={job['lane']} score={job['score']} scope={job['scope']} "
             f"sources={','.join(job['sources'])} published={job['published'] or 'n/a'}\n"
             f"reasons: {', '.join(job['reasons'])}\n"
             f"uid={job['uid']}"
@@ -162,8 +184,13 @@ class RadarApp(App):
         if not job:
             return
         store.set_status(self.conn, job["uid"], status)
-        self.notify(f"{job['company']} — {job['title']} → {status}")
-        self.load_rows()
+        row = store.get(self.conn, job["uid"])
+        payload = store.row_to_dict(row) if row else job
+        self.load_rows(keep_uid=job["uid"])
+        label = f"{job['company']} — {job['title'][:38]} → {status}"
+        self.set_status(f"{self.counts_line} · {label} · running {status} hook…")
+        self.notify(label)
+        self.run_status_hook(status, payload)
 
     def action_shortlist(self) -> None:
         self._mark("shortlist")
@@ -201,7 +228,22 @@ class RadarApp(App):
         target.write_text("\n".join(lines) + "\n")
         self.notify(f"exported {len(rows)} rows → {target}")
 
-    # ---- scan worker ------------------------------------------------------
+    # ---- workers ----------------------------------------------------------
+
+    @work(thread=True)
+    def run_status_hook(self, status: str, job: dict) -> None:
+        """Run the configured hook off the UI thread; `gh` calls are not instant."""
+        ok, message = run_hook(status, self.cfg, job)
+        self.call_from_thread(self.hook_done, status, job, ok, message)
+
+    def hook_done(self, status: str, job: dict, ok: bool, message: str) -> None:
+        label = f"{job['company']} — {job['title'][:38]} → {status}"
+        line = f"{self.counts_line} · {label}" if self.counts_line else label
+        if message and message != NO_HOOK:
+            line = f"{line} · {message}"
+        self.set_status(line)
+        if not ok:
+            self.notify(message, severity="warning", timeout=10)
 
     def action_rescan(self) -> None:
         self.run_scan()
@@ -210,11 +252,17 @@ class RadarApp(App):
     def run_scan(self) -> None:
         self.call_from_thread(self.set_status, "scanning…")
         try:
-            report = scan(
-                self.cfg,
-                self.conn,
-                progress=lambda message: self.call_from_thread(self.set_status, message),
-            )
+            # A worker thread gets its own connection: sqlite3 connections are not
+            # shareable across threads.
+            conn = store.connect(self.db)
+            try:
+                report = scan(
+                    self.cfg,
+                    conn,
+                    progress=lambda message: self.call_from_thread(self.set_status, message),
+                )
+            finally:
+                conn.close()
             self.call_from_thread(self.set_status, report.summary())
             for row in report.errors[:3]:
                 self.call_from_thread(self.notify, f"{row['source']}: {row['error']}", severity="warning")

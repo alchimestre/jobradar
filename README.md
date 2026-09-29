@@ -121,6 +121,25 @@ Two ways entries appear:
 
 Tune weights and rules in `config.yaml`; the defaults mirror the search's role-admission criteria.
 
+## Hooks
+
+Marking a posting (`a` applied, `s` shortlist, `x` ignore) writes the status **and** runs the hook
+configured for that status:
+
+```yaml
+hooks:
+  applied: python3 /Users/vincent/projects/jobsearch/scripts/log_applied.py
+```
+
+The command receives the posting as JSON on stdin and as `JOBRADAR_*` env vars (`UID`, `COMPANY`,
+`TITLE`, `URL`, `LANE`, `STATUS`, `HOOK`); relative paths in it resolve against this repo, cwd is the
+repo root, exit 0 is success and the last stdout line is shown in the TUI status bar. `JOBRADAR_HOOK_<STATUS>`
+(env) is the fallback when no config entry exists; `jobradar mark <uid> <status> --no-hook` skips it.
+
+Hooks run in a worker thread, so a slow `gh` call never freezes the UI, and a failing hook never loses
+the status write. `jobradar mark` runs the same hook — a status change is a status change wherever it
+happens.
+
 ## Storage
 
 SQLite at `.jobradar/state.db` (gitignored). One row per posting; identity is **(company, title)** so the

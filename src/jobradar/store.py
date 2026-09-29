@@ -51,7 +51,15 @@ def connect(db: str | pathlib.Path) -> sqlite3.Connection:
     conn = sqlite3.connect(path, timeout=30)
     conn.row_factory = sqlite3.Row
     conn.executescript(SCHEMA)
+    # WAL + busy_timeout: the TUI reads on the main thread while workers write.
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA busy_timeout=30000")
     return conn
+
+
+def get(conn: sqlite3.Connection, uid: str) -> sqlite3.Row | None:
+    return conn.execute("SELECT * FROM jobs WHERE uid = ?", (uid,)).fetchone()
+
 
 
 def upsert(conn: sqlite3.Connection, jobs: Iterable[tuple[Job, Match]]) -> tuple[int, int]:

@@ -50,12 +50,13 @@ TUI keys: `r` rescan · `o` open posting · `s` shortlist · `a` applied · `x` 
 | Command | Purpose |
 |---|---|
 | `scan [--only SUBSTR] [--cache-minutes N] [--no-learn]` | fetch every source, score, store; `--only ashby:mistralai` for one source |
-| `list [--decision high\|review\|low] [--lane …] [--min-score N] [--since 7d] [--search S] [--json]` | query the store |
+| `list [--decision high\|review\|low] [--lane …] [--min-score N] [--since 7d] [--search S] [--reason TAG] [--json]` | query the store; `--reason blockchain` isolates a lane |
 | `show UID` / `open UID` / `mark UID shortlist\|applied\|rejected\|ignored` | act on one posting |
 | `discover NAME\|URL… [--write] [--market de]` | resolve an employer to a verified ATS board |
 | `import SEED.yaml [--write]` | re-validate an external `{name, ats, token}` list and merge the live boards |
 | `export [--since 14d] [--decision high] [--out FILE]` | markdown for the pipeline tracker |
 | `sources` | per-source last fetch, job count, last error |
+| `rescore [--prune]` | re-score stored postings against the current rules (no network); `--prune` deletes below-floor rows never acted on |
 | `tui` | the terminal UI |
 
 `UID` is the stable row id (12 hex chars) — put it in the opportunity doc so the tracker and the
@@ -116,8 +117,14 @@ Two ways entries appear:
   demoted, but `ML Platform Engineer, Data` is not.
 - **Lanes** are derived from location: `eu-remote`, `de`, `ch`, `fr`, `au`, else `other`.
 - **Scope** demotes remote roles that explicitly exclude Europe (`scope=restricted`).
-- **Off-lane cap** — a strong title outside every target lane is capped at `review`, never `high`.
+- **Off-lane cap** — a strong title outside every target lane, or a remote posting that excludes Europe,
+  is capped at `review`, never `high`.
+- **Web3 infrastructure** is an admitted lane (`+web3`, `+blockchain`, `+staking`, `+web3-tech`, …),
+  weighted **below** ML/MLOps on purpose: ML stays the preference, Web3 is not gated out.
 - `decision`: `high` ≥ 6, `review` ≥ 3, below the `min_score` floor nothing is stored.
+
+Upsert only ever keeps a *better* score, so after editing rules run `jobradar rescore [--prune]` — a
+tightened rule will otherwise leave inflated rows behind.
 
 Tune weights and rules in `config.yaml`; the defaults mirror the search's role-admission criteria.
 

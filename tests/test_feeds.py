@@ -133,12 +133,47 @@ def test_whoishiring_raises_when_no_thread_is_present() -> None:
 
 
 @pytest.mark.parametrize(
+    ("url", "expected"),
+    [
+        ("https://cryptojobslist.com/jobs/senior-devops-engineer-remote-at-chainlink-labs", "Chainlink Labs"),
+        ("https://cryptojobslist.com/jobs/blockchain-engineer-at-balancer", "Balancer"),
+        ("https://example.invalid/jobs/senior-platform-engineer", ""),
+        ("", ""),
+    ],
+)
+def test_company_from_url_recovers_the_employer_slug(url: str, expected: str) -> None:
+    assert feeds.company_from_url(url) == expected
+
+
+def test_rss_prefers_the_url_slug_over_the_feed_title() -> None:
+    xml = """<?xml version="1.0"?>
+    <rss version="2.0"><channel><title>Crypto Jobs List</title><item>
+      <title>Senior DevOps Engineer (Remote)</title>
+      <link>https://cryptojobslist.com/jobs/senior-devops-engineer-remote-at-kraken</link>
+    </item></channel></rss>"""
+    job = feeds.fetch_rss(RouteStub(text=xml), "https://feed", "cryptojobslist")[0]
+    assert job.company == "Kraken"
+
+
+@pytest.mark.parametrize(
     ("title", "expected"),
     [
         ("Acme: Senior Platform Engineer", "Acme"),
         ("Platform Engineer at Beta Labs", "Beta Labs"),
         ("MLOps Engineer", "fallback"),
+        # CryptoJobsList suffixes salary brackets; without stripping them the dash rule
+        # swallowed the range and produced a company like "DeFi Engineer @ Di".
+        ("DeFi Engineer @ Dialectic [CHF 110'000 - 150'000]", "Dialectic"),
+        ("Senior DevOps Engineer (Remote) at Kraken", "Kraken"),
+        ("Engineer @ Acme (m/f/d)", "Acme"),
     ],
 )
 def test_guess_company(title: str, expected: str) -> None:
     assert feeds.guess_company(title, "fallback") == expected
+
+
+def test_company_from_url_handles_trailing_slugs() -> None:
+    # strict form: employer is the whole tail
+    assert feeds.company_from_url("https://cryptojobslist.com/jobs/devops-engineer-at-chainlink-labs") == "Chainlink Labs"
+    # loose form: employer followed by salary segments
+    assert feeds.company_from_url("https://cryptojobslist.com/jobs/defi-engineer-at-dialectic-chf-110-000") == "Dialectic"

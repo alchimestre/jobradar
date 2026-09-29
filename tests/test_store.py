@@ -62,6 +62,18 @@ def test_query_filters_compose(conn) -> None:
     assert store.query(conn, status="applied") == []
 
 
+def test_query_filters_by_scoring_reason(conn) -> None:
+    """Web3 and ML lanes are both in scope, so they must be separable by tag."""
+    ml, _ = pair(company="Acme", title="ML Platform Engineer")
+    web3 = Job(company="Chainlink Labs", title="Blockchain Infrastructure Engineer", url="https://w/1", source="ashby:chainlink", location="Remote")
+    store.upsert(conn, [(ml, Match(score=12, decision="high", lane="eu-remote", reasons=["+ml-platform"]))])
+    store.upsert(conn, [(web3, Match(score=6, decision="high", lane="eu-remote", reasons=["+infra", "+blockchain"]))])
+
+    assert [r["company"] for r in store.query(conn, reason="blockchain")] == ["Chainlink Labs"]
+    assert [r["company"] for r in store.query(conn, reason="ml-platform")] == ["Acme"]
+    assert store.query(conn, reason="nosuchtag") == []
+
+
 def test_status_moves_and_is_validated(conn) -> None:
     job, match = pair()
     store.upsert(conn, [(job, match)])

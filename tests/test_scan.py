@@ -10,7 +10,7 @@ import yaml
 from jobradar import scan as scan_mod
 from jobradar import store
 from jobradar.config import load_config
-from jobradar.models import Job
+from jobradar.models import Job, Match
 
 
 class StubFetcher:
@@ -162,6 +162,41 @@ def test_learning_a_board_keeps_disabled_rows_and_stays_quiet(tmp_path, monkeypa
     written = {c["token"]: c for c in yaml.safe_load((tmp_path / "companies.yaml").read_text())["companies"]}
     assert written["muted"]["enabled"] is False
     assert written["newco"]["auto"] is True
+
+
+def test_rescore_lowers_scores_that_upsert_would_have_kept(tmp_path, monkeypatch) -> None:
+    """Upsert only keeps the best score, so rule tightening needs an explicit re-score."""
+    monkeypatch.setenv("JOBRADAR_HOME", str(tmp_path))
+    write_watchlist(tmp_path, [])
+    cfg = load_config()
+    conn = store.connect(tmp_path / "state.db")
+    job = Job(company="Acme", title="DevOps Engineer", url="https://a/1", source="x", location="Remote")
+    store.upsert(conn, [(job, Match(score=99, decision="high", lane="eu-remote", reasons=["+stale"]))])
+
+    result = scan_mod.rescore(cfg, conn)
+
+    row = store.query(conn)[0]
+    assert result["rescored"] == 1
+    assert row["score"] < 99
+    assert row["decision"] == "low"
+    assert "+stale" not in row["reasons"]
+
+
+def test_rescore_prune_spares_rows_already_acted_on(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("JOBRADAR_HOME", str(tmp_path))
+    write_watchlist(tmp_path, [])
+    cfg = load_config()
+    conn = store.connect(tmp_path / "state.db")
+    untouched = Job(company="Noise", title="Growth Manager", url="https://a/1", source="x", location="Remote")
+    applied = Job(company="Acme", title="DevOps Engineer", url="https://a/2", source="x", location="Remote")
+    store.upsert(conn, [(untouched, Match(score=1, decision="low", lane="eu-remote")), (applied, Match(score=1, decision="low", lane="eu-remote"))])
+    store.set_status(conn, applied.uid, "applied")
+
+    result = scan_mod.rescore(cfg, conn, prune=True)
+
+    remaining = {row["company"] for row in store.query(conn)}
+    assert result["pruned"] == 1
+    assert remaining == {"Acme"}
 
 
 def test_scan_skips_sources_fetched_within_the_cache_window(tmp_path, monkeypatch) -> None:

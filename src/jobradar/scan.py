@@ -67,6 +67,49 @@ def _source_list(cfg: dict, companies: list[dict]) -> list[tuple[str, Callable[[
     return out
 
 
+def rescore(cfg: dict, conn: sqlite3.Connection, prune: bool = False) -> dict:
+    """Re-score every stored posting from its stored fields (no network).
+
+    Upsert only ever keeps the *best* score, so tightening a rule would otherwise
+    leave inflated rows behind. `prune` deletes below-floor rows that were never acted on.
+    """
+    import time
+
+    from .models import Job as _Job
+
+    scorer = Scorer(cfg["title_rules"], cfg["negative_rules"])
+    floor = int(cfg.get("min_score", 3))
+    rows = conn.execute("SELECT uid, company, title, location, url, remote, status FROM jobs").fetchall()
+    changed = 0
+    for row in rows:
+        job = _Job(
+            company=row["company"],
+            title=row["title"],
+            url=row["url"],
+            source="rescore",
+            location=row["location"],
+            remote=None if row["remote"] < 0 else bool(row["remote"]),
+        )
+        match = scorer.match(job)
+        conn.execute(
+            "UPDATE jobs SET score=?, decision=?, lane=?, reasons=?, scope=?, last_seen=? WHERE uid=?",
+            (match.score, match.decision, match.lane, ",".join(match.reasons[:6]), match.scope, int(time.time()), row["uid"]),
+        )
+        changed += 1
+    pruned = 0
+    if prune:
+        cur = conn.execute(
+            "DELETE FROM jobs WHERE score < ? AND status = 'new' AND decision = 'low'",
+            (floor,),
+        )
+        pruned = cur.rowcount
+    conn.commit()
+    return {"rescored": changed, "pruned": pruned, "floor": floor}
+
+
+# ---------------------------------------------------------------- scan
+
+
 def scan(
     cfg: dict,
     conn: sqlite3.Connection,

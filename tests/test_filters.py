@@ -49,6 +49,15 @@ def test_remote_scope_outside_europe_is_penalised(scorer: Scorer) -> None:
     assert "-scope-outside-eu" in outside.reasons
 
 
+def test_us_only_remote_cannot_reach_high_even_with_a_strong_title(scorer: Scorer) -> None:
+    """Coinbase-style "Remote - USA" postings must not outrank genuine EU-remote roles."""
+    outside = scorer.match(make("Senior Machine Learning Platform Engineer", "Remote - USA"))
+    inside = scorer.match(make("Senior Machine Learning Platform Engineer", "Remote - Europe"))
+    assert outside.decision == "review"
+    assert inside.decision == "high"
+    assert "-out-of-scope" in outside.reasons
+
+
 def test_leadership_title_is_not_admitted_on_a_platform_keyword(scorer: Scorer) -> None:
     assert scorer.match(make("Engineering Manager, Platform", "Berlin")).decision == "low"
 
@@ -73,6 +82,23 @@ def test_strong_title_outside_every_target_lane_is_capped_at_review(scorer: Scor
     assert match.lane == "other"
     assert match.decision == "review"
     assert "-off-lane" in match.reasons
+
+
+def test_web3_infrastructure_is_admitted_but_ranks_below_ml(scorer: Scorer) -> None:
+    """Web3 is in scope; ML/MLOps stays the preference without gating Web3 out."""
+    web3 = scorer.match(make("Blockchain Infrastructure Engineer", "Remote"))
+    web3_devops = scorer.match(make("DevOps Engineer, Web3", "Remote"))
+    mlops = scorer.match(make("MLOps Engineer", "Remote"))
+
+    assert web3.decision == "high" and "+blockchain" in web3.reasons
+    assert web3_devops.decision == "review"  # reachable, not buried under the floor
+    assert mlops.score > scorer.match(make("Blockchain Engineer", "Remote")).score
+
+
+def test_web3_marketing_and_sales_stay_rejected(scorer: Scorer) -> None:
+    """Widening scope admits infrastructure, not the crypto-adjacent GTM funnel."""
+    assert scorer.match(make("Web3 Growth Manager", "Remote")).decision == "low"
+    assert scorer.match(make("Crypto Sales Executive", "Remote")).decision == "low"
 
 
 def test_internship_is_filtered_out(scorer: Scorer) -> None:

@@ -37,6 +37,15 @@ TITLE_RULES: list[tuple[str, int, str]] = [
     (r"\bforward deployed\b|\bdeployment engineer\b|\bsolutions engineer\b", 2, "fwd-deployed"),
     (r"\breliability\b", 1, "reliability"),
     (r"\bobservability\b", 1, "observability"),
+    # Web3 infrastructure: admitted lane, weighted below ML/MLOps so the primary
+    # preference still wins on equal titles.
+    (r"\bweb3\b|\bweb ?3\b", 3, "web3"),
+    (r"\bblockchain\b", 3, "blockchain"),
+    (r"\bcrypto\b|\bcryptocurrency\b|\bdigital assets?\b", 2, "crypto"),
+    (r"\bprotocol engineer\b|\bprotocols? (infra|infrastructure|engineering)\b", 3, "protocol"),
+    (r"\bvalidator\b|\bstaking\b|\bnode operator\b", 3, "staking"),
+    (r"\bdefi\b|\bdex\b|\brollup\b|\blayer ?2\b|\bsmart contracts?\b|\bsolidity\b|\bevm\b", 3, "web3-tech"),
+    (r"\bindexer\b|\brpc\b|\bcustody\b|\bwallet infrastructure\b", 2, "web3-infra"),
 ]
 
 NEGATIVE_RULES: list[tuple[str, int, str]] = [
@@ -44,6 +53,8 @@ NEGATIVE_RULES: list[tuple[str, int, str]] = [
     (r"\b(head|director|vp|chief|president)\b", -5, "leadership"),
     (r"\bengineering manager\b|\bproduct manager\b|\bprogram manager\b", -5, "non-ic"),
     (r"\bsales\b|\baccount executive\b|\bcustomer success\b|\brecruiter\b|\bmarketing\b", -6, "go-to-market"),
+    (r"\bgrowth\b|\bpartnerships?\b|\bcommunity\b|\bbusiness development\b|\bevangelist\b", -6, "go-to-market"),
+    (r"\bcompliance\b|\blegal\b|\bfinance\b|\baccounting\b|\baudit\b|\btalent\b|\bpeople ops\b|\bcounsel\b", -6, "non-engineering"),
     (r"\bfrontend\b|\bmobile\b|\bios\b|\bandroid\b|\bqa\b|\btest engineer\b", -5, "off-target"),
     (r"\bdata scientist\b|\bdata analyst\b|\bbusiness analyst\b", -4, "off-target"),
     (r"\bdata engineer\b|\bdataops\b|\banalytics engineer\b", -2, "data-pipeline"),
@@ -86,6 +97,7 @@ DEFAULTS: dict = {
         {"name": "germantechjobs", "type": "rss", "url": "https://germantechjobs.de/rss"},
         {"name": "remoteok", "type": "remoteok", "url": "https://remoteok.com/api"},
         {"name": "arbeitnow", "type": "arbeitnow", "url": "https://www.arbeitnow.com/api/job-board-api"},
+        {"name": "cryptojobslist", "type": "rss", "url": "https://cryptojobslist.com/rss"},
     ],
 }
 

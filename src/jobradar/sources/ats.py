@@ -146,12 +146,22 @@ def fetch_smartrecruiters(fetcher: Fetcher, token: str, company: str) -> list[Jo
 
 
 def fetch_personio(fetcher: Fetcher, token: str, company: str) -> list[Job]:
+    from .feeds import strip_html
+
     root = ET.fromstring(fetcher.text(f"https://{token}.jobs.personio.de/xml?language=en"))
     out = []
     for position in root.iter("position"):
         job_id = (position.findtext("id") or "").strip()
         offices = [position.findtext("office") or ""]
         offices += [node.text or "" for node in position.findall("./additionalOffices/office")]
+        # Personio carries the full JD text: needed for JD-language detection on DACH boards.
+        # Only <value> holds prose; <name> is the section heading ("Intro", "Your tasks").
+        descriptions = position.find("jobDescriptions")
+        body = (
+            strip_html(" ".join("".join(value.itertext()) for value in descriptions.iter("value")))
+            if descriptions is not None
+            else ""
+        )
         out.append(
             Job(
                 company=company,
@@ -161,7 +171,7 @@ def fetch_personio(fetcher: Fetcher, token: str, company: str) -> list[Job]:
                 location=", ".join(o.strip() for o in offices if o and o.strip()),
                 published=_date(position.findtext("createdAt")),
                 remote=None,
-                description="",
+                description=body,
             )
         )
     return out

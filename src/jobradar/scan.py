@@ -19,6 +19,7 @@ class ScanReport:
     new: int = 0
     seen: int = 0
     scored: int = 0
+    out_of_scope: int = 0
     sources: list[dict] = field(default_factory=list)
     learned: list[dict] = field(default_factory=list)
     companies: int = 0
@@ -33,6 +34,8 @@ class ScanReport:
             f"{self.sources_ok}/{len(self.sources)} sources ok · "
             f"+{self.new} new · {self.seen} repeat · {self.scored} matched"
         )
+        if self.out_of_scope:
+            line += f" · {self.out_of_scope} out of scope (region/language)"
         if self.learned:
             line += f" · learned {len(self.learned)} ATS board(s)"
         if self.errors:
@@ -67,6 +70,16 @@ def _source_list(cfg: dict, companies: list[dict]) -> list[tuple[str, Callable[[
     return out
 
 
+def _scorer(cfg: dict) -> Scorer:
+    """One place where the admission policy is assembled from config."""
+    return Scorer(
+        cfg["title_rules"],
+        cfg["negative_rules"],
+        allowed_languages=tuple(cfg.get("allowed_languages") or ("en", "fr", "unknown")),
+        allowed_regions=tuple(cfg.get("allowed_regions") or ("eu", "emea", "au", "unknown")),
+    )
+
+
 def rescore(cfg: dict, conn: sqlite3.Connection, prune: bool = False) -> dict:
     """Re-score every stored posting from its stored fields (no network).
 
@@ -77,9 +90,9 @@ def rescore(cfg: dict, conn: sqlite3.Connection, prune: bool = False) -> dict:
 
     from .models import Job as _Job
 
-    scorer = Scorer(cfg["title_rules"], cfg["negative_rules"])
+    scorer = _scorer(cfg)
     floor = int(cfg.get("min_score", 3))
-    rows = conn.execute("SELECT uid, company, title, location, url, remote, status FROM jobs").fetchall()
+    rows = conn.execute("SELECT uid, company, title, location, url, remote, status, description FROM jobs").fetchall()
     changed = 0
     for row in rows:
         job = _Job(
@@ -89,22 +102,27 @@ def rescore(cfg: dict, conn: sqlite3.Connection, prune: bool = False) -> dict:
             source="rescore",
             location=row["location"],
             remote=None if row["remote"] < 0 else bool(row["remote"]),
+            description=row["description"] or "",
         )
         match = scorer.match(job)
         conn.execute(
-            "UPDATE jobs SET score=?, decision=?, lane=?, reasons=?, scope=?, last_seen=? WHERE uid=?",
-            (match.score, match.decision, match.lane, ",".join(match.reasons[:6]), match.scope, int(time.time()), row["uid"]),
+            "UPDATE jobs SET score=?, decision=?, lane=?, reasons=?, scope=?, region=?, language=?, last_seen=? WHERE uid=?",
+            (
+                match.score, match.decision, match.lane, ",".join(match.reasons[:6]), match.scope,
+                match.region, match.language, int(time.time()), row["uid"],
+            ),
         )
         changed += 1
     pruned = 0
     if prune:
         cur = conn.execute(
-            "DELETE FROM jobs WHERE score < ? AND status = 'new' AND decision = 'low'",
+            "DELETE FROM jobs WHERE score < ? AND status = 'new' AND decision IN ('low', 'out')",
             (floor,),
         )
         pruned = cur.rowcount
     conn.commit()
-    return {"rescored": changed, "pruned": pruned, "floor": floor}
+    out_of_scope = conn.execute("SELECT COUNT(*) n FROM jobs WHERE decision = 'out'").fetchone()["n"]
+    return {"rescored": changed, "pruned": pruned, "floor": floor, "out_of_scope": out_of_scope}
 
 
 # ---------------------------------------------------------------- scan
@@ -124,7 +142,7 @@ def scan(
         if progress:
             progress(message)
 
-    scorer = Scorer(cfg["title_rules"], cfg["negative_rules"])
+    scorer = _scorer(cfg)
     all_companies = load_companies()
     companies = [c for c in all_companies if c.get("enabled", True)]
     cache = int(cfg.get("cache_minutes", 0) if cache_minutes is None else cache_minutes)
@@ -170,6 +188,8 @@ def scan(
                         all_companies.append(entry)
                         report.learned.append({"ats": found[0], "token": found[1], "name": job.company, "from": job.url})
                 match = scorer.match(job)
+                if match.decision == "out":
+                    report.out_of_scope += 1
                 if match.score < int(cfg.get("min_score", 3)):
                     continue
                 report.scored += 1

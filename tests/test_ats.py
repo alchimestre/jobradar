@@ -78,6 +78,9 @@ PERSONIO = """<?xml version="1.0" encoding="UTF-8"?>
     <name>Platform Engineer</name>
     <office>Munich</office>
     <additionalOffices><office>Berlin</office></additionalOffices>
+    <jobDescriptions>
+      <jobDescription><name>Intro</name><value>&lt;p&gt;Wir suchen dich!&lt;/p&gt;</value></jobDescription>
+    </jobDescriptions>
   </position>
 </workzag-jobs>"""
 
@@ -129,3 +132,5 @@ def test_personio_parses_offices() -> None:
     assert job.title == "Platform Engineer"
     assert job.location == "Munich, Berlin"
     assert job.url == "https://personio.jobs.personio.de/job/1834171"
+    # JD text is needed for language detection
+    assert job.description == "Wir suchen dich!"

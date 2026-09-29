@@ -43,14 +43,14 @@ uv run jobradar tui
 ```
 
 TUI keys: `r` rescan · `o` open posting · `s` shortlist · `a` applied · `x` ignore · `/` filter ·
-`f` cycle decision filter · `e` export markdown · `q` quit.
+`f` cycle decision filter (high → review → `out` → all) · `e` export markdown · `q` quit.
 
 ## Commands
 
 | Command | Purpose |
 |---|---|
 | `scan [--only SUBSTR] [--cache-minutes N] [--no-learn]` | fetch every source, score, store; `--only ashby:mistralai` for one source |
-| `list [--decision high\|review\|low] [--lane …] [--min-score N] [--since 7d] [--search S] [--reason TAG] [--json]` | query the store; `--reason blockchain` isolates a lane |
+| `list [--decision high\|review\|low\|out] [--lane …] [--region eu\|emea\|au\|americas\|apac] [--language en\|fr\|de] [--min-score N] [--since 7d] [--search S] [--reason TAG] [--include-out] [--json]` | query the store; out-of-scope rows are hidden unless asked for |
 | `show UID` / `open UID` / `mark UID shortlist\|applied\|rejected\|ignored` | act on one posting |
 | `discover NAME\|URL… [--write] [--market de]` | resolve an employer to a verified ATS board |
 | `import SEED.yaml [--write]` | re-validate an external `{name, ats, token}` list and merge the live boards |
@@ -121,10 +121,20 @@ Two ways entries appear:
   is capped at `review`, never `high`.
 - **Web3 infrastructure** is an admitted lane (`+web3`, `+blockchain`, `+staking`, `+web3-tech`, …),
   weighted **below** ML/MLOps on purpose: ML stays the preference, Web3 is not gated out.
-- `decision`: `high` ≥ 6, `review` ≥ 3, below the `min_score` floor nothing is stored.
+- **Scope gate (region + JD language)** — everything outside it is stored with decision `out`, never
+  shown by default, and inspectable with `list --decision out`:
+  - `region` = `eu` | `emea` | `au` | `americas` | `apac` | `unknown`, from the location string. A posting
+    offering both (e.g. `Remote - USA / Remote - EMEA`) stays in scope — the European option is real.
+  - `language` = `en` | `fr` | `de` | `unknown`, detected from the JD text (German umlauts + stopwords
+    vs French/English markers). **Only the language is judged, never the country**: an English-language JD
+    at a Berlin employer stays in scope, which is what keeps the Berlin lane open.
+  - Configured by `allowed_languages` / `allowed_regions` in `config.yaml`.
+- `decision`: `high` ≥ 6, `review` ≥ 3, `out` for the scope gate, below the `min_score` floor nothing is
+  stored.
 
 Upsert only ever keeps a *better* score, so after editing rules run `jobradar rescore [--prune]` — a
-tightened rule will otherwise leave inflated rows behind.
+tightened rule will otherwise leave inflated rows behind, and `rescore` is also what reclassifies
+`region`/`language` for rows stored before the rule existed.
 
 Tune weights and rules in `config.yaml`; the defaults mirror the search's role-admission criteria.
 

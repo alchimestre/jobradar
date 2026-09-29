@@ -199,6 +199,23 @@ def test_rescore_prune_spares_rows_already_acted_on(tmp_path, monkeypatch) -> No
     assert remaining == {"Acme"}
 
 
+def test_rescore_reclassifies_region_and_language(tmp_path, monkeypatch) -> None:
+    """Rule changes must reach rows stored before them (the DB is not immutable)."""
+    monkeypatch.setenv("JOBRADAR_HOME", str(tmp_path))
+    write_watchlist(tmp_path, [])
+    cfg = load_config()
+    conn = store.connect(tmp_path / "state.db")
+    job = Job(company="US Corp", title="Senior Platform Engineer", url="https://us/1", source="x", location="San Francisco, CA, USA")
+    store.upsert(conn, [(job, Match(score=9, decision="high", lane="other"))])
+
+    result = scan_mod.rescore(cfg, conn)
+
+    row = store.query(conn, decision="out")[0]
+    assert row["decision"] == "out"
+    assert row["region"] == "americas"
+    assert result["out_of_scope"] == 1
+
+
 def test_scan_skips_sources_fetched_within_the_cache_window(tmp_path, monkeypatch) -> None:
     monkeypatch.setenv("JOBRADAR_HOME", str(tmp_path))
     write_watchlist(tmp_path, [{"name": "Good", "ats": "ashby", "token": "good"}])

@@ -74,6 +74,36 @@ def test_query_filters_by_scoring_reason(conn) -> None:
     assert store.query(conn, reason="nosuchtag") == []
 
 
+def test_out_of_scope_rows_are_hidden_unless_asked_for(conn) -> None:
+    """Region/language rejects are stored for auditing but never shown by default."""
+    good, _ = pair(company="Acme", title="ML Platform Engineer")
+    bad = Job(company="US Corp", title="Platform Engineer", url="https://us/1", source="x", location="Remote - USA")
+    store.upsert(
+        conn,
+        [
+            (good, Match(score=9, decision="high", lane="eu-remote", region="eu", language="en")),
+            (bad, Match(score=6, decision="out", lane="other", region="americas", language="en", reasons=["-region-americas"])),
+        ],
+    )
+
+    assert [r["company"] for r in store.query(conn)] == ["Acme"]
+    assert [r["company"] for r in store.query(conn, include_out=True)] == ["Acme", "US Corp"]
+    assert [r["company"] for r in store.query(conn, decision="out")] == ["US Corp"]
+    assert [r["company"] for r in store.query(conn, region="eu")] == ["Acme"]
+
+    result = store.counts(conn)
+    assert result["out_of_scope"] == 1
+    assert result["in_scope"] == 1
+    assert result["by_region"] == {"eu": 1, "americas": 1}
+
+
+def test_query_orders_eu_before_emea_before_unclassified(conn) -> None:
+    for company, region in (("Unknown", "unknown"), ("Gulf", "emea"), ("Berlin", "eu")):
+        job = Job(company=company, title="Platform Engineer", url=f"https://x/{company}", source="x")
+        store.upsert(conn, [(job, Match(score=6, decision="review", lane="other", region=region))])
+    assert [r["region"] for r in store.query(conn)] == ["eu", "emea", "unknown"]
+
+
 def test_status_moves_and_is_validated(conn) -> None:
     job, match = pair()
     store.upsert(conn, [(job, match)])

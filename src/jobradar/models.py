@@ -63,11 +63,13 @@ class Match:
     """Result of scoring a posting against the search filters."""
 
     score: int
-    decision: str  # high | review | low
+    decision: str  # high | review | low | out
     lane: str  # eu-remote | de | ch | fr | au | other
     reasons: list[str] = field(default_factory=list)
     scope: str = "ok"  # ok | restricted  (remote scope excludes the target region)
+    region: str = "unknown"  # eu | emea | au | americas | apac | unknown
+    language: str = "unknown"  # en | fr | de | unknown
 
     @property
     def rank(self) -> int:
-        return {"high": 2, "review": 1, "low": 0}[self.decision]
+        return {"high": 2, "review": 1, "low": 0, "out": 0}[self.decision]

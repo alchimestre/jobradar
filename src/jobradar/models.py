@@ -64,11 +64,13 @@ class Match:
 
     score: int
     decision: str  # high | review | low | out
-    lane: str  # eu-remote | de | ch | fr | au | other
+    lane: str  # eu-remote | de | ch | fr | nl | au | other
     reasons: list[str] = field(default_factory=list)
     scope: str = "ok"  # ok | restricted  (remote scope excludes the target region)
     region: str = "unknown"  # eu | emea | au | americas | apac | unknown
     language: str = "unknown"  # en | fr | de | unknown
+    mode: str = "unknown"  # remote | hybrid | onsite | unknown
+    country: str = "unknown"  # fr | de | ch | nl | other | unknown
 
     @property
     def rank(self) -> int:

@@ -62,9 +62,10 @@ NEGATIVE_RULES: list[tuple[str, int, str]] = [
 ]
 
 LANE_RULES: list[tuple[str, str]] = [
-    ("ch", r"\b(?:switzerland|swiss|z[uü]rich|zurich|lausanne|geneva|gen[eè]ve|basel|bern|zug|winterthur|fribourg|epfl|eth)\b"),
+    ("ch", r"\b(?:switzerland|swiss|z[uü]rich|zurich|lausanne|geneva|gen[eè]ve|basel|bern|zug|winterthur|fribourg|epfl|eth ?z[uü]rich|ethz)\b"),
     ("de", r"\b(?:germany|deutschland|berlin|munich|m[uü]nchen|hamburg|frankfurt|cologne|k[oö]ln|stuttgart|leipzig|dresden|d[uü]sseldorf|darmstadt|karlsruhe|potsdam|walldorf|jena|bielefeld)\b"),
     ("fr", r"\b(?:france|paris|lyon|lille|nantes|bordeaux|toulouse|marseille|nice|sophia|rennes|grenoble|montpellier)\b"),
+    ("nl", r"\b(?:netherlands|holland|amsterdam|rotterdam|utrecht|eindhoven|the hague|den haag|delft|groningen|haarlem|nijmegen|tilburg|maastricht|enschede)\b"),
     ("au", r"\b(?:australia|sydney|melbourne|brisbane|perth|adelaide|canberra|auckland|new zealand|wellington)\b"),
 ]
 
@@ -126,8 +127,88 @@ REGION_OUT_OF_SCOPE: list[tuple[str, str]] = [
     ),
 ]
 
-REMOTE_RE = r"\bremote\b|\banywhere\b|\bdistributed\b|home ?office|\bworldwide\b|\bemea\b|\btelework\b"
+REMOTE_RE = (
+    r"\bremote\b|\banywhere\b|\bdistributed\b|home ?office|\bworldwide\b|\bemea\b|\btelework\b|"
+    r"\beurope\b|\beuropean union\b|\beverywhere\b|work from home"
+)
 WORLDWIDE_RE = r"\bworldwide\b|\banywhere\b|\bglobal\b|\bemea\b|\beurope\b|\beu\b"
+HYBRID_RE = r"\bhybrid\b|\bpartially remote\b|\bremote[- ]friendly\b"
+# Geography a remote posting can be worked from that includes France: if one of these
+# is named next to a foreign country ("Remote - USA / Remote - EMEA"), the European
+# option is real and the posting stays admissible.
+BROAD_GEO_RE = (
+    r"\bemea\b|\beurope\b|\beuropean union\b|\beu\b|\beea\b|\bschengen\b|"
+    r"\bworldwide\b|\banywhere\b|\beverywhere\b|\bglobal(?:ly)?\b|\bthe world\b"
+)
+
+# Countries the search will physically move to (or work from in person). Tested before
+# the non-target list, so a posting offering both ("Madrid / Berlin") keeps the target.
+TARGET_COUNTRY_RULES: list[tuple[str, str]] = [
+    (
+        "fr",
+        r"\bfrance\b|\bfrench\b|\bparis\b|\blyon\b|\blille\b|\bnantes\b|\bbordeaux\b|\btoulouse\b|"
+        r"\bmarseille\b|\bsophia antipolis\b|\brennes\b|\bgrenoble\b|\bmontpellier\b|\bstrasbourg\b|"
+        r"\bnancy\b|\brouen\b|\bdijon\b|\bb[eé]thune\b|\bsaclay\b|\bissy[- ]les[- ]moulineaux\b|"
+        r"\bputeaux\b|\bnanterre\b|\bm[eé]rignac\b|\bclichy\b|\blevallois\b",
+    ),
+    (
+        "de",
+        r"\bgermany\b|\bdeutschland\b|\bberlin\b|\bmunich\b|\bm[uü]nchen\b|\bhamburg\b|\bfrankfurt\b|"
+        r"\bcologne\b|\bk[oö]ln\b|\bstuttgart\b|\bleipzig\b|\bdresden\b|\bd[uü]sseldorf\b|\bdarmstadt\b|"
+        r"\bkarlsruhe\b|\bpotsdam\b|\bwalldorf\b|\bjena\b|\bbielefeld\b|\bessen\b|\bbonn\b|\bn[uü]rnberg\b|"
+        r"\bnuremberg\b|\bmannheim\b|\bfreiburg\b|\bheidelberg\b|\bm[uü]nster\b|\bbochum\b|\bdortmund\b|"
+        r"\bhannover\b|\bhanover\b|\bbremen\b|\bregensburg\b|\baugsburg\b|\bwolfsburg\b|\bingolstadt\b|"
+        r"\bleonberg\b|\bgr[uü]nwald\b|\bunterschlei[sß]heim\b|\bgarching\b|\bt[uü]bingen\b|\bravensburg\b",
+    ),
+    (
+        "ch",
+        r"\bswitzerland\b|\bswiss\b|\bchf\b|\bz[uü]rich\b|\bzurich\b|\bgeneva\b|\bgen[eè]ve\b|\bbasel\b|"
+        r"\bbern\b|\blausanne\b|\bzug\b|\bwinterthur\b|\bfribourg\b|\blugano\b|\bluzern\b|\blucerne\b|"
+        r"\bst\.? gallen\b|\bvevey\b|\bneuch[aâ]tel\b|\bbienne\b|\bthun\b|\bepfl\b|\beth ?z[uü]rich\b|\bethz\b|\bswisscom\b|"
+        r"\brotkreuz\b|\bwallisellen\b|\bop[fn]ikon\b|\bdietikon\b|\bjona\b",
+    ),
+    (
+        "nl",
+        r"\bnetherlands\b|\bholland\b|\bamsterdam\b|\brotterdam\b|\butrecht\b|\beindhoven\b|\bden haag\b|"
+        r"\bthe hague\b|\bdelft\b|\bgroningen\b|\bhaarlem\b|\bnijmegen\b|\btilburg\b|\bmaastricht\b|"
+        r"\benschede\b|\barnhem\b|\bamersfoort\b|\bzwolle\b|\bleiden\b|\bbreda\b|\bapeldoorn\b|"
+        r"\bden bosch\b|\bhoofddorp\b|\bnieuwegein\b",
+    ),
+]
+
+# Everything a *physical* role must not be in once the target countries are excluded:
+# the UK, the rest of Europe, and the out-of-scope world regions. Only consulted after
+# the target list missed, and only the sign matters (target vs other vs unknown).
+NON_TARGET_COUNTRY_RE = "|".join(
+    [
+        r"\bunited kingdom\b|\buk\b|\bengland\b|\bscotland\b|\bwales\b|\blondon\b|\bmanchester\b|"
+        r"\bedinburgh\b|\bglasgow\b|\bbleeds\b|\bbristol\b|\bcambridge\b|\boxford\b|\bsheffield\b|"
+        r"\bireland\b|\bdublin\b|\bcork\b|\bgalway\b|\bspain\b|\bmadrid\b|\bbarcelona\b|\bvalencia\b|"
+        r"\bseville\b|\bbilbao\b|\bmalaga\b|\bportugal\b|\blisbon\b|\bporto\b|\bitaly\b|\bmilan\b|"
+        r"\brome\b|\bturin\b|\baustria\b|\bvienna\b|\bwien\b|\bpoland\b|\bwarsaw\b|\bkrakow\b|"
+        r"\bwroclaw\b|\bczech\b|\bczechia\b|\bprague\b|\bbrno\b|\bdenmark\b|\bcopenhagen\b|\bsweden\b|"
+        r"\bstockholm\b|\bg[oö]teborg\b|\bnorway\b|\boslo\b|\bfinland\b|\bhelsinki\b|\bbelgium\b|"
+        r"\bbrussels\b|\bleuven\b|\bghent\b|\bantwerp\b|\bluxembourg\b|\bromania\b|\btimi[sș]oara\b|"
+        r"\bbucharest\b|\bhungary\b|\bbudapest\b|\bgreece\b|\bathens\b|\bestonia\b|\btallinn\b|"
+        r"\blatvia\b|\briga\b|\blithuania\b|\bvilnius\b|\bslovakia\b|\bbratislava\b|\bslovenia\b|"
+        r"\bljubljana\b|\bcroatia\b|\bzagreb\b|\bbulgaria\b|\bsofia\b|\bcyprus\b|\bmalta\b|\biceland\b|"
+        r"\baustralia\b|\bsydney\b|\bmelbourne\b|\bbrisbane\b|\bperth\b|\badelaide\b|\bcanberra\b|"
+        r"\bnew zealand\b|\bauckland\b|\bwellington\b|"
+        # Short US forms the region patterns miss; read from the location only, where a
+        # lowercase "us" pronoun cannot appear.
+        r"\bus\b|\busa\b|\bu\.s\.?a?\.?\b|\bus based\b|\bnorth america\b|\bnyc\b|\bn\.?y\.?c\.?\b|"
+        r"\bsf\b|\bsan fran\b|\btexas\b|\bcalifornia\b|"
+        # EMEA cities outside the target: in region, out of reach for a physical role.
+        r"\bisrael\b|\btel aviv\b|\bherzliya\b|\bhaifa\b|\bjerusalem\b|\bturkey\b|\bistanbul\b|"
+        r"\bankara\b|\buae\b|\bdubai\b|\babu dhabi\b|\bqatar\b|\bdoha\b|\bsaudi\b|\briyadh\b|"
+        r"\bkuwait\b|\bbahrain\b|\boman\b|\bmuscat\b|\blebanon\b|\bbeirut\b|\bjordan\b|\bamman\b|"
+        r"\begypt\b|\bcairo\b|\bmorocco\b|\bcasablanca\b|\btunisia\b|\btunis\b|\balgeria\b|\balgiers\b|"
+        r"\bsouth africa\b|\bcape town\b|\bjohannesburg\b|\bdurban\b|\bpretoria\b|\bkenya\b|\bnairobi\b|"
+        r"\bnigeria\b|\blagos\b|\bghana\b|\baccra\b|\barmenia\b|\byerevan\b|\bgeorgia\b|\btbilisi\b|"
+        r"\bazerbaijan\b|\bbaku\b|\bkazakhstan\b|\balmaty\b|\buzbekistan\b|\btashkent\b",
+        *[pattern for _, pattern in REGION_OUT_OF_SCOPE],
+    ]
+)
 
 # Language detection. Marker counts over title + description; umlauts count triple
 # because they are near-conclusive for German and never appear in English/French JDs.
@@ -172,6 +253,9 @@ DEFAULTS: dict = {
     # decision "out" (inspectable, never shown by default).
     "allowed_languages": ["en", "fr", "unknown"],
     "allowed_regions": ["eu", "emea", "au", "unknown"],
+    # On-site/hybrid roles must be in one of these; remote roles must either name one
+    # of them or be open to a broad region (EU/EMEA/worldwide) that includes France.
+    "target_countries": ["fr", "de", "ch", "nl"],
     "title_rules": [[p, w, t] for p, w, t in TITLE_RULES],
     "negative_rules": [[p, w, t] for p, w, t in NEGATIVE_RULES],
     "feeds": [

@@ -44,13 +44,16 @@ uv run jobradar tui
 
 TUI keys: `r` rescan · `o` open posting · `s` shortlist · `a` applied · `x` ignore · `/` filter ·
 `f` cycle decision filter (high → review → `out` → all) · `e` export markdown · `q` quit.
+Column layout: `,`/`.` move the column cursor · `[`/`]` narrow/widen that column ·
+`{`/`}` reorder it · `t` cycle the row sort (`smart`/score/company/title/seen/lane) · `T` reverse it.
+Widths, order and sort are saved to `.jobradar/tui.json` and restored on the next start.
 
 ## Commands
 
 | Command | Purpose |
 |---|---|
 | `scan [--only SUBSTR] [--cache-minutes N] [--no-learn]` | fetch every source, score, store; `--only ashby:mistralai` for one source |
-| `list [--decision high\|review\|low\|out] [--lane …] [--region eu\|emea\|au\|americas\|apac] [--language en\|fr\|de] [--min-score N] [--since 7d] [--search S] [--reason TAG] [--include-out] [--json]` | query the store; out-of-scope rows are hidden unless asked for |
+| `list [--decision high\|review\|low\|out] [--lane …] [--region eu\|emea\|au\|americas\|apac\|unknown] [--mode remote\|hybrid\|onsite\|unknown] [--country fr\|de\|ch\|nl\|other\|unknown] [--language en\|fr\|de] [--min-score N] [--since 7d] [--search S] [--reason TAG] [--include-out] [--json]` | query the store; out-of-scope rows are hidden unless asked for |
 | `show UID` / `open UID` / `mark UID shortlist\|applied\|rejected\|ignored` | act on one posting |
 | `discover NAME\|URL… [--write] [--market de]` | resolve an employer to a verified ATS board |
 | `import SEED.yaml [--write]` | re-validate an external `{name, ats, token}` list and merge the live boards |
@@ -78,7 +81,9 @@ store stay reconcilable.
 
 **Feeds** (`src/jobradar/sources/feeds.py`): any RSS/Atom URL, plus native adapters for RemoteOK,
 Arbeitnow, and the monthly Hacker News *Ask HN: Who is hiring?* thread (via the HN Algolia API,
-one row per top-level comment).
+one row per top-level comment). Only comments in the `Company | Role | Location | …` form become rows:
+a candidate's "who wants to be hired?" profile, or any pipe-less comment, is skipped — a row built from
+one carried the entire comment as its title. Roles are capped at 160 characters.
 
 Add feeds in `config.yaml`. Cloudflare-protected boards (jobs.mlops.community, Welcome to the Jungle,
 Wellfound, startup.jobs, SEEK) block scripted access — keep those as browser bookmarks.
@@ -115,7 +120,8 @@ Two ways entries appear:
   disciplines, and `staff`/`principal` seniority stretch.
 - **Soft negatives** only apply when no strong target title is present — a `data engineer` posting is
   demoted, but `ML Platform Engineer, Data` is not.
-- **Lanes** are derived from location: `eu-remote`, `de`, `ch`, `fr`, `au`, else `other`.
+- **Lanes** are derived from location (falling back to the country): `eu-remote`, `de`, `ch`, `fr`, `nl`,
+  `au`, else `other`.
 - **Scope** demotes remote roles that explicitly exclude Europe (`scope=restricted`).
 - **Off-lane cap** — a strong title outside every target lane, or a remote posting that excludes Europe,
   is capped at `review`, never `high`.
@@ -129,6 +135,20 @@ Two ways entries appear:
     vs French/English markers). **Only the language is judged, never the country**: an English-language JD
     at a Berlin employer stays in scope, which is what keeps the Berlin lane open.
   - Configured by `allowed_languages` / `allowed_regions` in `config.yaml`.
+- **Geography gate (work mode + country)** — a second, stricter pass over *where the job is done*, stored
+  as `mode` (`remote` | `hybrid` | `onsite` | `unknown`) and `country` (`fr` | `de` | `ch` | `nl` | `other` |
+  `unknown`):
+  - A **physical** role (hybrid or on-site) is admitted only in a target country
+    (`target_countries`, default FR/DE/CH/NL). London, Tel Aviv, Warsaw or "Headquarters" go to `out`
+    with `-onsite-not-target`.
+  - A **remote** role is admitted when it names a target country or a broad region that contains one
+    (`EMEA`, `EU`, `Europe`, `worldwide`, `anywhere`), or when the posting says nothing at all about
+    geography. One that names only somewhere else (`Remote - US`, `Remote, United Kingdom`, `NYC or
+    Remote`) goes to `out` with `-remote-not-target`.
+  - A remote posting with no geography at all is kept — a bare `Remote` is often a real EU-remote job —
+    but tagged `-geo-unverified`, so `list --reason geo-unverified` audits exactly those rows.
+  - Country is read from the location and title; when both are silent the JD body is consulted, but only
+    for a *target* country. A JD that merely mentions another country is too noisy to place a posting by.
 - `decision`: `high` ≥ 6, `review` ≥ 3, `out` for the scope gate, below the `min_score` floor nothing is
   stored.
 
@@ -164,6 +184,9 @@ same requisition appearing on the employer's ATS and on an aggregator — with d
 formatting — collapses into one row whose `sources`, `locations`, best score and status accumulate.
 Statuses: `new`, `shortlist`, `applied`, `rejected`, `ignored`.
 
+`.jobradar/tui.json` (gitignored, written by the TUI) holds the column order, column widths and row sort.
+Delete it to go back to the defaults.
+
 ## Known limits
 
 - **Workable rate-limits** (HTTP 429) after a burst of probing; `scan` records it as a per-source error
@@ -178,7 +201,7 @@ Statuses: `new`, `shortlist`, `applied`, `rejected`, `ignored`.
 ## Tests
 
 ```bash
-uv run pytest -q          # 57 tests: adapters vs captured payloads, scoring, store identity, scan isolation, TUI
+uv run pytest -q          # 170 tests: adapters vs captured payloads, scoring, store identity, scan isolation, TUI
 ```
 
 Adapter tests run against captured real payload shapes, so a provider changing its JSON schema fails the

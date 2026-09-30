@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 
-from textual.widgets import DataTable
+from textual.widgets import DataTable, Input
 
 from jobradar import store, tui
 from jobradar.config import load_config
@@ -180,5 +180,139 @@ def test_hook_failure_is_surfaced_without_losing_the_status(tmp_path) -> None:
             assert "failed to start" in app.status_message
             # the status write still landed even though the hook failed
             assert store.query(app.conn, status="applied")[0]["company"] == "Acme"
+
+    asyncio.run(scenario())
+
+
+def test_long_title_is_clipped_to_its_column_width(tmp_path) -> None:
+    """Regression: a 1,191-character HN comment sized the title column to the comment
+    and pushed every other column off the terminal."""
+    db = tmp_path / "state.db"
+    conn = store.connect(db)
+    long_title = "Location: London, UK Remote: Yes — UK remote or London hybrid/onsite " + "x" * 1200
+    store.upsert(
+        conn,
+        [(
+            Job(company="HN", title=long_title, url="https://a/1", source="hn:hn"),
+            Match(score=9, decision="review", lane="eu-remote", mode="remote", country="other"),
+        )],
+    )
+    conn.close()
+    app = app_for(db)
+
+    async def scenario() -> None:
+        async with app.run_test(size=(140, 30)) as pilot:
+            await pilot.pause()
+            table = app.query_one("#jobs", DataTable)
+            widths = dict(app.column_layout)
+            for column in table.ordered_columns:
+                assert column.width == widths[column.key.value]
+            title_index = [key for key, _ in app.column_layout].index("title")
+            cell = str(table.get_row_at(0)[title_index])
+            assert len(cell) <= widths["title"] and cell.endswith("…")
+
+    asyncio.run(scenario())
+
+
+def test_column_widths_are_resizable_and_persisted(tmp_path) -> None:
+    db = tmp_path / "state.db"
+    seed(db)
+    app = app_for(db)
+    before = dict(app.column_layout)["title"]
+
+    async def scenario() -> None:
+        async with app.run_test() as pilot:
+            await pilot.pause()
+            app.query_one("#jobs", DataTable).focus()
+            app.column_focus = 5  # title
+            app.action_grow_column()
+            await pilot.pause()
+            assert dict(app.column_layout)["title"] == before + tui.WIDTH_STEP
+            assert app.query_one("#jobs", DataTable).ordered_columns[5].width == before + tui.WIDTH_STEP
+            assert "title width" in app.status_message
+
+    asyncio.run(scenario())
+
+    # a fresh app on the same store starts with the saved layout
+    reopened = app_for(db)
+    assert dict(reopened.column_layout)["title"] == before + tui.WIDTH_STEP
+
+
+def test_columns_can_be_reordered_and_persisted(tmp_path) -> None:
+    db = tmp_path / "state.db"
+    seed(db)
+    app = app_for(db)
+
+    async def scenario() -> None:
+        async with app.run_test() as pilot:
+            await pilot.pause()
+            app.column_focus = 5  # title
+            app.action_move_column_left()
+            await pilot.pause()
+            order = [key for key, _ in app.column_layout]
+            assert order[4] == "title" and order[5] == "company"
+            assert [c.key.value for c in app.query_one("#jobs", DataTable).ordered_columns] == order
+
+    asyncio.run(scenario())
+
+    reopened = app_for(db)
+    assert [key for key, _ in reopened.column_layout][4] == "title"
+
+
+def test_rows_can_be_sorted(tmp_path) -> None:
+    db = tmp_path / "state.db"
+    seed(db)
+    app = app_for(db)
+
+    async def scenario() -> None:
+        async with app.run_test() as pilot:
+            await pilot.pause()
+            assert [job["company"] for job in app.jobs] == ["Acme", "Beta"]
+            app.action_cycle_sort()  # smart -> score
+            await pilot.pause()
+            assert app.sort_key == "score"
+            assert [job["score"] for job in app.jobs] == [12, 2]
+            keep = app.current()["uid"]
+            app.action_reverse_sort()
+            await pilot.pause()
+            assert [job["score"] for job in app.jobs] == [2, 12]
+            # the re-render keeps the cursor on the same posting
+            assert app.current()["uid"] == keep
+            assert "sort score ascending" in app.status_message
+
+    asyncio.run(scenario())
+
+
+def test_documented_keys_reach_their_actions(tmp_path) -> None:
+    """Regression: the search box holds focus at mount, so every documented key was
+    typed into it instead of reaching the app."""
+    db = tmp_path / "state.db"
+    seed(db)
+    app = app_for(db)
+
+    async def scenario() -> None:
+        async with app.run_test(size=(150, 34)) as pilot:
+            await pilot.pause()
+            assert app.focused is not None and app.focused.id == "jobs"
+            title = [key for key, _ in app.column_layout].index("title")
+            app.column_focus = title
+
+            await pilot.press("]")
+            await pilot.pause()
+            assert dict(app.column_layout)["title"] == tui.COLUMN_WIDTHS["title"] + tui.WIDTH_STEP
+            await pilot.press("[")
+            await pilot.pause()
+            assert dict(app.column_layout)["title"] == tui.COLUMN_WIDTHS["title"]
+
+            await pilot.press("t")
+            await pilot.pause()
+            assert app.sort_key == "score"
+            await pilot.press("comma")
+            await pilot.pause()
+            assert app.column_focus == title - 1
+
+            await pilot.press("slash")
+            await pilot.pause()
+            assert app.query_one("#search", Input).has_focus
 
     asyncio.run(scenario())

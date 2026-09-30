@@ -77,6 +77,7 @@ def _scorer(cfg: dict) -> Scorer:
         cfg["negative_rules"],
         allowed_languages=tuple(cfg.get("allowed_languages") or ("en", "fr", "unknown")),
         allowed_regions=tuple(cfg.get("allowed_regions") or ("eu", "emea", "au", "unknown")),
+        target_countries=tuple(cfg.get("target_countries") or ("fr", "de", "ch", "nl")),
     )
 
 
@@ -106,10 +107,11 @@ def rescore(cfg: dict, conn: sqlite3.Connection, prune: bool = False) -> dict:
         )
         match = scorer.match(job)
         conn.execute(
-            "UPDATE jobs SET score=?, decision=?, lane=?, reasons=?, scope=?, region=?, language=?, last_seen=? WHERE uid=?",
+            "UPDATE jobs SET score=?, decision=?, lane=?, reasons=?, scope=?, region=?, language=?,"
+            " mode=?, country=?, last_seen=? WHERE uid=?",
             (
                 match.score, match.decision, match.lane, ",".join(match.reasons[:6]), match.scope,
-                match.region, match.language, int(time.time()), row["uid"],
+                match.region, match.language, match.mode, match.country, int(time.time()), row["uid"],
             ),
         )
         changed += 1

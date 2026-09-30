@@ -34,6 +34,7 @@ def make(title: str, location: str = "", company: str = "Acme", description: str
         ("Munich", "de"),
         ("Zurich, Switzerland", "ch"),
         ("Paris, France", "fr"),
+        ("Amsterdam, Netherlands", "nl"),
         ("Sydney, Australia", "au"),
         ("Singapore", "other"),
     ],
@@ -91,8 +92,126 @@ def test_region_classification_and_exclusion(scorer: Scorer, location: str, regi
     if region in ("americas", "apac"):
         assert match.decision == "out"  # hard exclusion
         assert f"-region-{region}" in match.reasons
-    else:
-        assert match.decision != "out"  # admitted, possibly capped to review
+
+
+@pytest.mark.parametrize(
+    "location",
+    [
+        "Paris, France",
+        "Lyon",
+        "Berlin, Germany",
+        "München",
+        "Zurich, Switzerland",
+        "Lausanne, Vaud",
+        "Amsterdam, Netherlands",
+        "Rotterdam",
+        "Berlin / Barcelona",  # a mixed posting keeps the target option
+        "Hybrid (Paris)",
+    ],
+)
+def test_physical_roles_in_a_target_country_are_admitted(scorer: Scorer, location: str) -> None:
+    match = scorer.match(make("Senior ML Platform Engineer", location))
+    assert match.decision != "out", match.reasons
+    assert match.mode in ("onsite", "hybrid")
+
+
+@pytest.mark.parametrize(
+    "location",
+    [
+        "London, United Kingdom",
+        "London",  # the reported case: a UK hybrid role
+        "Remote - US",
+        "Remote, United Kingdom",
+        "NYC, ONSITE 3-4 days/wk",
+        "ONSITE (SF)",
+        "North America",
+        "Gurugram",
+        "Timișoara, TM, ro",
+        "United States / Poland",
+        "Sydney, Australia",
+        "Madrid, MD, es",
+        "Warsaw",
+        "Stockholm",
+        "APAC",
+        "Headquarters",  # unplaceable: no country, no remote marker
+        "Full-time",
+    ],
+)
+def test_physical_roles_outside_the_target_countries_are_out(scorer: Scorer, location: str) -> None:
+    match = scorer.match(make("Senior ML Platform Engineer", location))
+    assert match.decision == "out"
+    assert any(reason.endswith("-not-target") for reason in match.reasons), match.reasons
+
+
+@pytest.mark.parametrize(
+    "location",
+    [
+        "Remote",
+        "Remote - Europe",
+        "Remote - Worldwide",
+        "REMOTE (EU)",
+        "Home based - Worldwide",
+        "EMEA",
+        "Remote Germany",
+        "Anywhere in the World",
+        "Remote - USA / Remote - EMEA",  # the European option is real
+    ],
+)
+def test_remote_roles_workable_from_france_stay_in_scope(scorer: Scorer, location: str) -> None:
+    match = scorer.match(make("Senior ML Platform Engineer", location))
+    assert match.mode == "remote"
+    assert match.decision != "out", match.reasons
+
+
+def test_a_remote_posting_with_no_geography_is_kept_but_flagged(scorer: Scorer) -> None:
+    """A bare "Remote" is often a real EU-remote job; it is kept, tagged for audit."""
+    match = scorer.match(make("Senior ML Platform Engineer", "Remote"))
+    assert match.decision != "out"
+    assert "-geo-unverified" in match.reasons
+    # …but a posting that names a broad region is placed, not flagged
+    assert "-geo-unverified" not in scorer.match(make("Senior ML Platform Engineer", "Remote - Europe")).reasons
+
+
+@pytest.mark.parametrize(
+    "location",
+    ["Remote, United Kingdom", "Remote - US", "Remote (US)", "NYC or Remote", "Remote, Canada"],
+)
+def test_remote_roles_restricted_to_another_country_are_out(scorer: Scorer, location: str) -> None:
+    match = scorer.match(make("Senior ML Platform Engineer", location))
+    assert match.decision == "out"
+    assert "-remote-not-target" in match.reasons
+
+
+def test_target_country_is_recovered_from_the_jd_when_the_location_is_empty(scorer: Scorer) -> None:
+    """Boards that publish no location at all still say "CHF" or "Switzerland" in the JD."""
+    job = make("Senior Site Reliability Engineer", "")
+    job.description = "Salary: CHF 140'000 - 180'000 per year Requirements: Swiss/EU/EFTA citizen"
+    match = scorer.match(job)
+    assert match.country == "ch"
+    assert match.decision == "review"
+
+
+def test_a_foreign_country_in_the_jd_is_not_a_location_signal(scorer: Scorer) -> None:
+    """Only a *target* country is trusted in the JD body; everything else would be noise."""
+    job = make("Senior Site Reliability Engineer", "")
+    job.description = "We are a US company with offices in New York and a team in Europe."
+    assert scorer.match(job).country == "unknown"
+
+
+def test_the_eth_token_in_a_crypto_jd_does_not_move_a_job_to_switzerland(scorer: Scorer) -> None:
+    """`\\beth\\b` (ETH Zürich) also matched the ETH token, which every Web3 JD mentions."""
+    job = make("Blockchain Security Engineer", "")
+    job.description = "Audit Solidity contracts, reason about ETH and EVM internals, ship tooling."
+    match = scorer.match(job)
+    assert match.country != "ch"
+    assert match.decision == "out"
+
+
+def test_mode_follows_the_location(scorer: Scorer) -> None:
+    assert scorer.mode(make("Platform Engineer", "Remote - Europe")) == "remote"
+    assert scorer.mode(make("Platform Engineer", "Berlin (Hybrid)")) == "hybrid"
+    assert scorer.mode(make("Platform Engineer", "Berlin")) == "onsite"
+    assert scorer.mode(make("Platform Engineer", "")) == "unknown"
 
 
 def test_target_lanes_still_reach_high(scorer: Scorer) -> None:
@@ -100,12 +219,12 @@ def test_target_lanes_still_reach_high(scorer: Scorer) -> None:
         assert scorer.match(make("Senior ML Platform Engineer", location)).decision == "high"
 
 
-def test_emea_onsite_outside_the_lanes_is_capped_not_excluded(scorer: Scorer) -> None:
-    """London/Tel Aviv are in scope but are not target lanes: visible, not promoted."""
+def test_physical_emea_roles_outside_the_target_countries_are_excluded(scorer: Scorer) -> None:
+    """London/Tel Aviv are EMEA, but they are not places this search will work in person."""
     for location in ("London, United Kingdom", "Tel Aviv, Israel"):
         match = scorer.match(make("Senior ML Platform Engineer", location))
-        assert match.decision == "review"
-        assert "-off-lane" in match.reasons
+        assert match.decision == "out"
+        assert "-onsite-not-target" in match.reasons
 
 
 def test_out_of_scope_beats_even_a_low_score(scorer: Scorer) -> None:
@@ -141,9 +260,17 @@ def test_ml_platform_role_with_k8s_is_high(scorer: Scorer) -> None:
     assert {"+ml-platform", "+k8s"} <= set(match.reasons)
 
 
-def test_strong_title_outside_every_target_lane_is_capped_at_review(scorer: Scorer) -> None:
-    """Off-lane but in scope (unclassified location) is capped, not excluded."""
-    match = scorer.match(make("ML Platform Engineer (Kubernetes)", "Hybrid"))
+def test_off_lane_in_scope_role_is_capped_at_review(scorer: Scorer) -> None:
+    """A remote-flagged posting whose location places it nowhere keeps lane "other"."""
+    job = Job(
+        company="Acme",
+        title="ML Platform Engineer (Kubernetes)",
+        url="https://example.invalid/1",
+        source="test",
+        location="Somewhere",
+        remote=True,
+    )
+    match = scorer.match(job)
     assert match.lane == "other"
     assert match.decision == "review"
     assert "-off-lane" in match.reasons

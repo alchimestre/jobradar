@@ -78,6 +78,8 @@ def cmd_list(args) -> int:
         reason=getattr(args, "reason", None),
         region=getattr(args, "region", None),
         language=getattr(args, "language", None),
+        mode=getattr(args, "mode", None),
+        country=getattr(args, "country", None),
         include_out=getattr(args, "include_out", False),
         limit=args.limit,
     )
@@ -93,6 +95,8 @@ def cmd_list(args) -> int:
             "company": r["company"],
             "title": r["title"],
             "location": r["location"],
+            "mode": r["mode"],
+            "country": r["country"],
             "region": r["region"],
             "lang": r["language"],
             "status": r["status"],
@@ -111,6 +115,8 @@ def cmd_list(args) -> int:
                 ("company", 18),
                 ("title", 44),
                 ("location", 20),
+                ("mode", 8),
+                ("country", 8),
                 ("region", 9),
                 ("lang", 5),
                 ("status", 9),
@@ -351,14 +357,16 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("list", help="list stored postings")
     p.add_argument("--status")
     p.add_argument("--decision", choices=["high", "review", "low", "out"])
-    p.add_argument("--lane", choices=["eu-remote", "de", "ch", "fr", "au", "other"])
+    p.add_argument("--lane", choices=["eu-remote", "de", "ch", "fr", "nl", "au", "other"])
     p.add_argument("--min-score", type=int)
     p.add_argument("--since", help="e.g. 12h, 7d, 2w")
     p.add_argument("--search")
     p.add_argument("--reason", help="filter on a scoring reason tag, e.g. blockchain / mlops / k8s")
     p.add_argument("--region", choices=["eu", "emea", "au", "americas", "apac", "unknown"])
     p.add_argument("--language", choices=["en", "fr", "de", "unknown"])
-    p.add_argument("--include-out", action="store_true", help="include out-of-scope rows (wrong region/JD language)")
+    p.add_argument("--mode", choices=["remote", "hybrid", "onsite", "unknown"])
+    p.add_argument("--country", choices=["fr", "de", "ch", "nl", "other", "unknown"])
+    p.add_argument("--include-out", action="store_true", help="include out-of-scope rows (location/JD language/JD geography)")
     p.add_argument("--limit", type=int, default=200)
     p.add_argument("--json", action="store_true")
     p.set_defaults(func=cmd_list)

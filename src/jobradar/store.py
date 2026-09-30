@@ -28,6 +28,8 @@ CREATE TABLE IF NOT EXISTS jobs (
     scope       TEXT NOT NULL DEFAULT 'ok',
     region      TEXT NOT NULL DEFAULT 'unknown',
     language    TEXT NOT NULL DEFAULT 'unknown',
+    mode        TEXT NOT NULL DEFAULT 'unknown',
+    country     TEXT NOT NULL DEFAULT 'unknown',
     status      TEXT NOT NULL DEFAULT 'new',
     first_seen  INTEGER NOT NULL,
     last_seen   INTEGER NOT NULL,
@@ -54,7 +56,7 @@ def connect(db: str | pathlib.Path) -> sqlite3.Connection:
     conn.row_factory = sqlite3.Row
     conn.executescript(SCHEMA)
     existing = {row[1] for row in conn.execute("PRAGMA table_info(jobs)")}
-    for column in ("region", "language"):
+    for column in ("region", "language", "mode", "country"):
         if column not in existing:
             conn.execute(f"ALTER TABLE jobs ADD COLUMN {column} TEXT NOT NULL DEFAULT 'unknown'")
     # WAL + busy_timeout: the TUI reads on the main thread while workers write.
@@ -78,13 +80,14 @@ def upsert(conn: sqlite3.Connection, jobs: Iterable[tuple[Job, Match]]) -> tuple
             conn.execute(
                 """INSERT INTO jobs (uid, company, title, location, url, sources, published,
                        remote, description, score, decision, lane, reasons, scope, region, language,
-                       first_seen, last_seen)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                       mode, country, first_seen, last_seen)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (
                     job.uid, job.company, job.title, job.location, job.url, job.source,
                     job.published, -1 if job.remote is None else int(job.remote),
                     job.description[:4000], match.score, match.decision, match.lane,
-                    ",".join(match.reasons[:6]), match.scope, match.region, match.language, now, now,
+                    ",".join(match.reasons[:6]), match.scope, match.region, match.language,
+                    match.mode, match.country, now, now,
                 ),
             )
             new += 1
@@ -98,7 +101,7 @@ def upsert(conn: sqlite3.Connection, jobs: Iterable[tuple[Job, Match]]) -> tuple
             conn.execute(
                 """UPDATE jobs SET last_seen = ?, sources = ?, location = ?,
                        score = ?, decision = ?, lane = ?, reasons = ?, scope = ?,
-                       region = ?, language = ?,
+                       region = ?, language = ?, mode = ?, country = ?,
                        remote = ?, url = CASE WHEN url = '' THEN ? ELSE url END,
                        description = CASE WHEN description = '' THEN ? ELSE description END
                    WHERE uid = ?""",
@@ -109,7 +112,7 @@ def upsert(conn: sqlite3.Connection, jobs: Iterable[tuple[Job, Match]]) -> tuple
                     match.score if keep_best else row["score"],
                     match.decision if keep_best else row["decision"],
                     match.lane, ",".join(match.reasons[:6]), match.scope,
-                    match.region, match.language,
+                    match.region, match.language, match.mode, match.country,
                     -1 if job.remote is None else int(job.remote), job.url,
                     job.description[:4000], job.uid,
                 ),
@@ -144,6 +147,8 @@ def query(
     reason: str | None = None,
     region: str | None = None,
     language: str | None = None,
+    mode: str | None = None,
+    country: str | None = None,
     include_out: bool = False,
     limit: int = 500,
 ) -> list[sqlite3.Row]:
@@ -167,6 +172,12 @@ def query(
     if language:
         where.append("language = ?")
         params.append(language)
+    if mode:
+        where.append("mode = ?")
+        params.append(mode)
+    if country:
+        where.append("country = ?")
+        params.append(country)
     if min_score is not None:
         where.append("score >= ?")
         params.append(min_score)

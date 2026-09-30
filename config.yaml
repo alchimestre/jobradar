@@ -21,6 +21,13 @@ cache_minutes: 0      # >0 skips a source that was fetched within N minutes
 allowed_languages: [en, fr, unknown]
 allowed_regions: [eu, emea, au, unknown]
 
+# Where the work happens. A hybrid/on-site posting must be in one of these countries;
+# a remote one must name one of them or a broad region that includes them
+# (EU / EMEA / Europe / worldwide / anywhere), else it is excluded. A remote posting
+# with no geography at all is kept and tagged `-geo-unverified`.
+#   countries: fr | de | ch | nl
+target_countries: [fr, de, ch, nl]
+
 # Aggregator feeds. type: rss | remoteok | arbeitnow | hn
 # Add a `company: <name>` to an rss entry when the feed title is not the employer.
 feeds:

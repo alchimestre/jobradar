@@ -54,6 +54,16 @@ def _rss_date(value: str) -> str:
 _SLUG_COMPANY = re.compile(r"-at-([a-z0-9][a-z0-9-]{1,60})/?$", re.I)
 _SLUG_NOISE = {"chf", "eur", "usd", "gbp", "salaries", "salary", "k"}
 
+# The who-is-hiring thread attracts two kinds of non-offers: candidates pasting the
+# "who wants to be hired?" profile, and comments that are not formatted as a posting at
+# all. Both used to become rows whose *title* was the entire comment text.
+HIRING_POST_MAX = 160
+CANDIDATE_POST_RE = re.compile(
+    r"willing to relocate|#?open to work|seeking (?:a |new )?(?:job|role|position|opportunit)|"
+    r"looking for (?:a |new )?(?:job|role|position|opportunit)",
+    re.I,
+)
+
 
 def _trim_slug_tail(slug: str) -> str:
     """`dialectic-chf-110-000` -> `dialectic`: stop at the first numeric/currency token."""
@@ -165,12 +175,17 @@ def fetch_hn_whoishiring(fetcher: Fetcher, url: str, name: str) -> list[Job]:
         raw = strip_html(child.get("text") or "")
         if not raw:
             continue
+        # A candidate's own profile is not an offer (HN id 49686668 was one).
+        if CANDIDATE_POST_RE.search(raw):
+            continue
         parts = [p.strip() for p in raw.split("|")]
-        if len(parts) >= 2:
-            company, title, location = parts[0], parts[1], parts[2] if len(parts) > 2 else ""
-        else:
-            company, title, location = "HN", parts[0], ""
-        company = re.sub(r"https?://\S+", "", company).strip(" -–—()")
+        # The thread format is "Company | Role | Location | …"; anything without a
+        # separator is prose, and a row built from it would carry the whole comment as
+        # its title.
+        if len(parts) < 2 or not parts[1]:
+            continue
+        company, title, location = parts[0], parts[1][:HIRING_POST_MAX], parts[2] if len(parts) > 2 else ""
+        company = re.sub(r"https?://\S+", "", company).strip(" -–—()")[:80]
         if not title:
             continue
         out.append(

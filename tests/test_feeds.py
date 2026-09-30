@@ -119,12 +119,45 @@ def test_whoishiring_splits_the_pipe_delimited_header() -> None:
         },
     }
     jobs = feeds.fetch_hn_whoishiring(RouteStub(routes), "search", "hn")
-    assert len(jobs) == 2
+    # Only the pipe-delimited posting is an offer; prose would become a row whose title
+    # is the whole comment.
+    assert len(jobs) == 1
     first = jobs[0]
     assert (first.company, first.title, first.location) == ("Acme", "ML Platform Engineer", "Remote (EU)")
     assert first.url == "https://news.ycombinator.com/item?id=1"
     assert first.remote is True
-    assert jobs[1].company == "HN"
+
+
+def test_whoishiring_skips_a_candidate_who_posted_their_own_profile() -> None:
+    """HN 49686668: a "who wants to be hired?" profile pasted into the hiring thread."""
+    routes = {
+        "search": {"hits": [{"objectID": "49522897", "title": "Ask HN: Who is hiring? (September 2026)"}]},
+        "items/49522897": {
+            "children": [
+                {
+                    "id": 49686668,
+                    "created_at": "2026-09-13T17:56:12Z",
+                    "text": (
+                        "Location: London, UK<br>Remote: Yes — UK remote or London hybrid/onsite<br>"
+                        "Willing to relocate: No<br>Right to work: UK<br>Availability: Immediately"
+                        "<p>Software Engineer with 4 years of experience…"
+                    ),
+                },
+                {"id": 4, "created_at": "2026-09-13T18:00:00Z", "text": "Beta | SRE | Berlin"},
+            ]
+        },
+    }
+    jobs = feeds.fetch_hn_whoishiring(RouteStub(routes), "search", "hn")
+    assert [job.company for job in jobs] == ["Beta"]
+
+
+def test_whoishiring_bounds_a_long_role() -> None:
+    routes = {
+        "search": {"hits": [{"objectID": "1", "title": "Ask HN: Who is hiring? (September 2026)"}]},
+        "items/1": {"children": [{"id": 9, "text": f"Acme | {'x' * 400} | Berlin"}]},
+    }
+    jobs = feeds.fetch_hn_whoishiring(RouteStub(routes), "search", "hn")
+    assert len(jobs[0].title) == feeds.HIRING_POST_MAX
 
 
 def test_whoishiring_raises_when_no_thread_is_present() -> None:

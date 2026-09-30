@@ -5,15 +5,19 @@ from __future__ import annotations
 import re
 
 from .config import (
+    BROAD_GEO_RE,
     ENGLISH_MARKERS,
     FRENCH_MARKERS,
     GERMAN_MARKERS,
+    HYBRID_RE,
     LANE_RULES,
+    NON_TARGET_COUNTRY_RE,
     REGION_IN_SCOPE,
     REGION_OUT_OF_SCOPE,
     REMOTE_RE,
     SCOPE_BLOCKED_RE,
     SCOPE_OPEN_RE,
+    TARGET_COUNTRY_RULES,
     WORLDWIDE_RE,
 )
 from .models import Job, Match
@@ -21,9 +25,13 @@ from .models import Job, Match
 REMOTE = re.compile(REMOTE_RE, re.I)
 SCOPE_BLOCKED = re.compile(SCOPE_BLOCKED_RE, re.I)
 SCOPE_OPEN = re.compile(SCOPE_OPEN_RE, re.I)
+HYBRID = re.compile(HYBRID_RE, re.I)
+BROAD_GEO = re.compile(BROAD_GEO_RE, re.I)
+NON_TARGET_COUNTRY = re.compile(NON_TARGET_COUNTRY_RE, re.I)
 
 REGION_IN = [(region, re.compile(p, re.I)) for region, p in REGION_IN_SCOPE]
 REGION_OUT = [(region, re.compile(p, re.I)) for region, p in REGION_OUT_OF_SCOPE]
+TARGET_COUNTRY = [(code, re.compile(p, re.I)) for code, p in TARGET_COUNTRY_RULES]
 WORLDWIDE = re.compile(WORLDWIDE_RE, re.I)
 GERMAN = re.compile(GERMAN_MARKERS, re.I)
 FRENCH = re.compile(FRENCH_MARKERS, re.I)
@@ -64,6 +72,7 @@ class Scorer:
         review: int = 3,
         allowed_languages: tuple[str, ...] = ("en", "fr", "unknown"),
         allowed_regions: tuple[str, ...] = ("eu", "emea", "au", "unknown"),
+        target_countries: tuple[str, ...] = ("fr", "de", "ch", "nl"),
     ):
         self.title = _rules(title_rules)
         self.negative = _rules(negative_rules)
@@ -71,6 +80,8 @@ class Scorer:
         self.lanes = [(lane, re.compile(p, re.I)) for lane, p in LANE_RULES]
         self.allowed_languages = tuple(allowed_languages)
         self.allowed_regions = tuple(allowed_regions)
+        self.target_countries = tuple(target_countries)
+        self.country_rules = [(code, pattern) for code, pattern in TARGET_COUNTRY if code in self.target_countries]
 
     def region(self, job: Job) -> str:
         """eu | emea | au | americas | apac | unknown.
@@ -88,6 +99,42 @@ class Scorer:
         if WORLDWIDE.search(hay):
             return "eu"  # worldwide remote includes the EU
         return "unknown"
+
+    def _target_in(self, text: str) -> str:
+        for code, pattern in self.country_rules:
+            if pattern.search(text):
+                return code
+        return "unknown"
+
+    def country(self, job: Job) -> str:
+        """fr | de | ch | nl | other | unknown.
+
+        Target countries win over everything ("Madrid / Berlin" is a Berlin posting too).
+        When the location says nothing — an empty ATS field, "Headquarters", "Remote" —
+        the JD body is consulted as a last resort, but only for a *target* country:
+        a description that merely mentions some other country is far too noisy to gate on.
+
+        The non-target list is read from the location alone: a job title is allowed to say
+        "join us", and the bare "US" that region patterns miss only ever appears there.
+        """
+        hay = f"{job.location} {job.title}"
+        code = self._target_in(hay)
+        if code != "unknown":
+            return code
+        if NON_TARGET_COUNTRY.search(job.location):
+            return "other"
+        if job.description:
+            return self._target_in(job.description[:1200])
+        return "unknown"
+
+    def mode(self, job: Job) -> str:
+        """remote | hybrid | onsite | unknown — how the role is worked, from the location."""
+        hay = f"{job.location} {job.title}"
+        if job.remote or REMOTE.search(hay):
+            return "remote"
+        if HYBRID.search(hay):
+            return "hybrid"
+        return "onsite" if job.location.strip() else "unknown"
 
     def language(self, job: Job) -> str:
         """en | fr | de | unknown, from the description when there is one.
@@ -115,14 +162,17 @@ class Scorer:
             return "fr"
         return "unknown"
 
-    def lane(self, job: Job) -> str:
+    def lane(self, job: Job, country: str | None = None) -> str:
         hay = f"{job.location} {job.title}"
         if REMOTE.search(hay) and not any(p.search(job.location) for _, p in self.lanes):
             return "eu-remote"
         for lane, pattern in self.lanes:
             if pattern.search(hay):
                 return lane
-        return "other"
+        # The gate has already established the country; a target country outside the lane
+        # city lists ("Béthune", "Essen") is still that lane, not "other".
+        place = country if country is not None else self.country(job)
+        return place if place in self.target_countries else "other"
 
     def scope(self, job: Job) -> str:
         """Remote postings that exclude Europe are noise, not opportunities."""
@@ -162,9 +212,11 @@ class Scorer:
             decision = "review"
         else:
             decision = "low"
-        lane = self.lane(job)
+        country = self.country(job)
+        lane = self.lane(job, country)
         region = self.region(job)
         language = self.language(job)
+        mode = self.mode(job)
         # "high" means in-lane and worth acting on today: a strong title outside every
         # target lane, or a remote posting that excludes Europe, stays visible as
         # "review" instead of jumping the queue.
@@ -179,6 +231,23 @@ class Scorer:
         if region not in self.allowed_regions:
             decision = "out"
             reasons.append(f"-region-{region}")
+        # Geography gate. Physical work has to be in a target country; remote work has to
+        # be workable from one, either by naming it or by naming a broad region that
+        # contains it. A remote posting that only names somewhere else, or a physical one
+        # whose location cannot be placed, is noise rather than an opportunity. The reason
+        # is recorded even when another rule already excluded the row: it is the audit trail.
+        if mode == "remote":
+            broad = bool(BROAD_GEO.search(hay))
+            if not (broad or country in self.target_countries or country == "unknown"):
+                decision = "out"
+                reasons.append("-remote-not-target")
+            elif decision != "out" and not broad and country == "unknown":
+                # Nothing in the posting places it. Kept — a bare "Remote" is often a real
+                # EU-remote job — but tagged so the unverifiable rows can be audited.
+                reasons.append("-geo-unverified")
+        elif country not in self.target_countries:
+            decision = "out"
+            reasons.append(f"-{mode}-not-target")
         return Match(
             score=score,
             decision=decision,
@@ -187,6 +256,8 @@ class Scorer:
             scope=scope,
             region=region,
             language=language,
+            mode=mode,
+            country=country,
         )
 
 

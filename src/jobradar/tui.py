@@ -150,7 +150,10 @@ class RadarApp(App):
         if data.get("sort") in SORT_KEYS:
             self.sort_key = data["sort"]
         self.sort_reverse = bool(data.get("reverse"))
-        self.column_focus = max(0, min(self.column_focus, len(self.column_layout) - 1))
+        # The cursor starts on `title`: it is the column that needs adjusting (and the one
+        # that used to blow the table out), so `[`/`]` do something useful immediately.
+        focus = [key for key, _ in self.column_layout].index("title") if "title" in COLUMN_WIDTHS else 0
+        self.column_focus = max(0, min(focus, len(self.column_layout) - 1))
 
     def _save_layout(self) -> None:
         try:

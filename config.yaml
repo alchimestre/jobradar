@@ -95,6 +95,8 @@ negative_rules:
   - ["\\bgrowth\\b|\\bpartnerships?\\b|\\bcommunity\\b|\\bbusiness development\\b|\\bevangelist\\b", -6, go-to-market]
   - ["\\bcompliance\\b|\\blegal\\b|\\bfinance\\b|\\baccounting\\b|\\baudit\\b|\\btalent\\b|\\bpeople ops\\b|\\bcounsel\\b", -6, non-engineering]
   - ["\\bfrontend\\b|\\bmobile\\b|\\bios\\b|\\bandroid\\b|\\bqa\\b|\\btest engineer\\b", -5, off-target]
+  # Vincent is not a developer: code-grounded roles are out, not merely lower (2026-10-09).
+  - ["\\b(software|back ?end|full ?stack|front ?end) (engineer|developer)\\b|\\bsde\\b", -6, software-role]
   - ["\\bdata scientist\\b|\\bdata analyst\\b|\\bbusiness analyst\\b", -4, off-target]
   - ["\\bdata engineer\\b|\\bdataops\\b|\\banalytics engineer\\b", -2, data-pipeline]
   - ["\\bstaff\\b|\\bprincipal\\b", -6, seniority-stretch]

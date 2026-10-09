@@ -85,6 +85,35 @@ PERSONIO = """<?xml version="1.0" encoding="UTF-8"?>
 </workzag-jobs>"""
 
 
+WORKABLE = {
+    "name": "Runware",
+    "jobs": [
+        {
+            "title": "Senior Site Reliability Engineer",
+            "shortcode": "7869EFBE16",
+            "url": "https://apply.workable.com/j/7869EFBE16",
+            "telecommuting": True,
+            "published_on": "2026-07-20",
+            "locations": [
+                {"country": "United Kingdom", "countryCode": "GB", "city": ""},
+                {"country": "France", "countryCode": "FR", "city": ""},
+                {"country": "Germany", "countryCode": "DE", "city": ""},
+            ],
+            "description": "Kubernetes, observability",
+        },
+        {
+            "title": "Cooling Systems Design Engineer",
+            "shortcode": "FF7C5B881F",
+            "telecommuting": False,
+            "published_on": "2026-10-06",
+            "country": "Romania",
+            "city": "Bucharest",
+            "description": "",
+        },
+    ],
+}
+
+
 def test_ashby_maps_fields_and_skips_unlisted() -> None:
     jobs = ats.fetch_ashby(StubFetcher(ASHBY), "vClusterLabs", "vCluster Labs")
     assert len(jobs) == 1
@@ -134,3 +163,18 @@ def test_personio_parses_offices() -> None:
     assert job.url == "https://personio.jobs.personio.de/job/1834171"
     # JD text is needed for language detection
     assert job.description == "Wir suchen dich!"
+
+
+def test_workable_joins_countries_from_locations() -> None:
+    """The widget payload has no `location` key — geography is in `locations[]`, and a
+    multi-country requisition carries one entry per country."""
+    jobs = ats.fetch_workable(StubFetcher(WORKABLE), "runware", "runware")
+    remote_role, onsite_role = jobs
+    assert remote_role.location == "United Kingdom; France; Germany"
+    assert remote_role.remote is True
+    assert remote_role.published == "2026-07-20"
+    assert remote_role.url == "https://apply.workable.com/j/7869EFBE16"
+    # A payload with no locations[] falls back to the flat city/country pair.
+    assert onsite_role.location == "Bucharest, Romania"
+    assert onsite_role.remote is False
+    assert onsite_role.url == "https://apply.workable.com/runware/j/FF7C5B881F/"

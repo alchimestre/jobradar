@@ -48,6 +48,26 @@ def test_distinct_titles_are_distinct_rows(conn) -> None:
     assert len(store.query(conn)) == 2
 
 
+def test_a_scope_gate_change_reaches_an_existing_row(conn) -> None:
+    """The gate is authoritative, not a score improvement: a posting that becomes out of
+    scope flips to out even though its score did not rise. Without this, a rule change
+    (JD language, region, target country) never reaches rows already in the store."""
+    job, high = pair(score=9, decision="high")
+    store.upsert(conn, [(job, high)])
+    _, out = pair(score=9, decision="out")
+    store.upsert(conn, [(job, out)])
+    assert store.get(conn, job.uid)["decision"] == "out"
+
+
+def test_a_weaker_source_still_does_not_downgrade_a_stored_decision(conn) -> None:
+    """Keep-best survives the gate fix: a low-scoring source cannot demote a stored row."""
+    job, high = pair(score=9, decision="high")
+    store.upsert(conn, [(job, high)])
+    _, low = pair(score=2, decision="low")
+    store.upsert(conn, [(job, low)])
+    assert store.get(conn, job.uid)["decision"] == "high"
+
+
 def test_query_filters_compose(conn) -> None:
     store.upsert(
         conn,

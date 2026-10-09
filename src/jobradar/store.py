@@ -94,7 +94,12 @@ def upsert(conn: sqlite3.Connection, jobs: Iterable[tuple[Job, Match]]) -> tuple
         else:
             sources = {s for s in (row["sources"] or "").split(",") if s}
             sources.add(job.source)
-            keep_best = match.score > row["score"]
+            # A scope gate is authoritative, not a score improvement: a posting that is out
+            # of scope now must be recorded as out, even seen through a source that scores it
+            # no higher. Without this, a rule change (JD language, region, target country)
+            # never reaches rows already in the store.
+            scope_changed = (match.decision == "out") != (row["decision"] == "out")
+            keep_best = match.score > row["score"] or scope_changed
             locations = [part.strip() for part in (row["location"] or "").split(" / ") if part.strip()]
             if job.location and job.location not in locations:
                 locations.append(job.location)

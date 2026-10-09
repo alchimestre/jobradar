@@ -962,6 +962,13 @@ companies:
   tier: ''
   auto: false
   enabled: true
+- name: SpotMe
+  ats: greenhouse
+  token: spotme
+  market: eu-remote
+  tier: ''
+  auto: false
+  enabled: true
 - name: Stability AI
   ats: greenhouse
   token: stabilityai

@@ -591,6 +591,13 @@ companies:
   tier: ''
   auto: false
   enabled: true
+- name: Lifen
+  ats: ashby
+  token: lifen
+  market: fr
+  tier: ''
+  auto: false
+  enabled: true
 - name: Lovable
   ats: ashby
   token: lovable

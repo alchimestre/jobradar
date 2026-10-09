@@ -128,12 +128,19 @@ class Scorer:
         return "unknown"
 
     def mode(self, job: Job) -> str:
-        """remote | hybrid | onsite | unknown — how the role is worked, from the location."""
+        """remote | hybrid | onsite | unknown — how the role is worked, from the location.
+
+        An explicit "hybrid" in the *location* beats the source's own remote flag: Ashby
+        marks postings `isRemote: true` while their location reads "The Hague - hybrid",
+        which stored hybrid roles as remote and let them past the physical-role checks.
+        The title is deliberately not consulted — "Hybrid Cloud Engineer" is a topic, not
+        a working arrangement.
+        """
         hay = f"{job.location} {job.title}"
+        if HYBRID.search(job.location):
+            return "hybrid"
         if job.remote or REMOTE.search(hay):
             return "remote"
-        if HYBRID.search(hay):
-            return "hybrid"
         return "onsite" if job.location.strip() else "unknown"
 
     def language(self, job: Job) -> str:

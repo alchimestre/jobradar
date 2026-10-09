@@ -214,6 +214,20 @@ def test_mode_follows_the_location(scorer: Scorer) -> None:
     assert scorer.mode(make("Platform Engineer", "")) == "unknown"
 
 
+def test_an_explicit_hybrid_location_beats_the_source_remote_flag(scorer: Scorer) -> None:
+    """Ashby sets isRemote: true on postings whose location reads "The Hague - hybrid";
+    the location is the truthful signal, so a hybrid role is not stored as remote."""
+    job = make("Senior Infrastructure Engineer", "The Hague - hybrid")
+    job.remote = True
+    assert scorer.mode(job) == "hybrid"
+    assert scorer.match(job).mode == "hybrid"
+
+
+def test_hybrid_in_a_title_is_not_a_working_arrangement(scorer: Scorer) -> None:
+    """'Hybrid Cloud Engineer' is a topic; a remote posting stays remote."""
+    assert scorer.mode(make("Hybrid Cloud Engineer", "Remote - Europe")) == "remote"
+
+
 def test_target_lanes_still_reach_high(scorer: Scorer) -> None:
     for location in ("Berlin, Germany", "Paris, France", "Zurich, Switzerland", "Remote - Europe"):
         assert scorer.match(make("Senior ML Platform Engineer", location)).decision == "high"

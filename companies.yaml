@@ -514,6 +514,13 @@ companies:
   tier: ''
   auto: false
   enabled: true
+- name: j
+  ats: workable
+  token: j
+  market: ''
+  tier: ''
+  auto: true
+  enabled: true
 - name: Kaiko
   ats: personio
   token: Kaiko
@@ -874,6 +881,13 @@ companies:
 - name: RunPod
   ats: ashby
   token: runpod
+  market: eu-remote
+  tier: ''
+  auto: false
+  enabled: true
+- name: Runware
+  ats: workable
+  token: runware
   market: eu-remote
   tier: ''
   auto: false

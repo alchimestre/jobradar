@@ -97,13 +97,38 @@ def fetch_lever(fetcher: Fetcher, token: str, company: str) -> list[Job]:
     return out
 
 
+def _workable_location(item: dict) -> str:
+    """Geography from the widget payload's `locations[]`.
+
+    The payload carries no `location` key, so the old `item.get("location")` read always
+    produced "" — every Workable posting stored `country: unknown` and was tagged
+    `-geo-unverified` despite the answer being right there. A multi-country requisition
+    carries one entry per country, so they are joined; the rest of the fields are
+    fallbacks for payloads that only carry the flat country/city pair.
+    """
+    if item.get("location"):
+        return _text(item["location"])
+    labels: list[str] = []
+    for loc in item.get("locations") or []:
+        if isinstance(loc, dict):
+            parts = (_text(loc.get("city")), _text(loc.get("country") or loc.get("countryCode")))
+        else:
+            parts = (_text(loc), "")
+        label = ", ".join(p for p in parts if p)
+        if label and label not in labels:
+            labels.append(label)
+    if labels:
+        return "; ".join(labels)
+    return ", ".join(p for p in (_text(item.get("city")), _text(item.get("country")), _text(item.get("state"))) if p)
+
+
 def fetch_workable(fetcher: Fetcher, token: str, company: str) -> list[Job]:
     url = f"https://apply.workable.com/api/v1/widget/accounts/{token}?details=true"
     payload = fetcher.json(url)
     name = payload.get("name") or company
     out = []
     for item in payload.get("jobs") or []:
-        location = _text(item.get("location"))
+        location = _workable_location(item)
         shortcode = item.get("shortcode") or item.get("code") or ""
         out.append(
             Job(

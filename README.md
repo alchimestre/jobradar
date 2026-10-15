@@ -22,11 +22,12 @@ another application pile.
 ## Install
 
 ```bash
-uv sync                 # creates .venv from uv.lock
+uv sync                 # creates .venv from uv.lock, at the pinned interpreter
 uv run jobradar --help
 ```
 
-Python ≥3.11. Runtime dependencies: `httpx`, `PyYAML`, `textual`.
+`.python-version` pins the interpreter (`3.13.16`) and `uv sync` downloads it if the machine lacks it;
+`uv.lock` pins all dependencies. Tested on uv 0.13. Runtime dependencies: `httpx`, `PyYAML`, `textual`.
 
 ## Quickstart
 

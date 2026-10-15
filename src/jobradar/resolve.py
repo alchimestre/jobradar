@@ -13,19 +13,34 @@ import time
 from .net import Fetcher
 from .sources import FETCHERS
 
-# Ordered: the first pattern that matches wins.
-URL_PATTERNS: list[tuple[str, str]] = [
+# Ordered: the first pattern that matches wins. A third element is a token template:
+# platforms whose token is not one URL segment (Workday needs `<host>/<site>`) name the
+# groups to join, otherwise the token is group `t`.
+URL_PATTERNS: list[tuple[str, str] | tuple[str, str, str]] = [
     (r"jobs\.ashbyhq\.com/(?P<t>[A-Za-z0-9._-]+)", "ashby"),
     (r"api\.ashbyhq\.com/posting-api/job-board/(?P<t>[A-Za-z0-9._-]+)", "ashby"),
     (r"(?:job-boards|boards)\.greenhouse\.io/(?P<t>[A-Za-z0-9._-]+)", "greenhouse"),
     (r"jobs\.lever\.co/(?P<t>[A-Za-z0-9._-]+)", "lever"),
-    (r"apply\.workable\.com/(?P<t>[A-Za-z0-9._-]+)", "workable"),
+    # `/j/<id>` is Workable's job path, not an account: it must not become the token.
+    (r"apply\.workable\.com/(?!j/)(?P<t>[A-Za-z0-9._-]+)", "workable"),
     (r"(?P<t>[A-Za-z0-9-]+)\.workable\.com", "workable"),
     (r"(?:jobs|careers)\.smartrecruiters\.com/(?P<t>[A-Za-z0-9._-]+)", "smartrecruiters"),
     (r"api\.smartrecruiters\.com/v1/companies/(?P<t>[A-Za-z0-9._-]+)", "smartrecruiters"),
     (r"(?P<t>[A-Za-z0-9-]+)\.jobs\.personio\.de", "personio"),
     (r"(?P<t>[A-Za-z0-9-]+)\.jobs\.personio\.com", "personio"),
     (r"(?P<t>[A-Za-z0-9-]+)\.recruitee\.com", "recruitee"),
+    # The API form first: its `wday/cxs` segment would otherwise be read as the career site.
+    (
+        r"(?P<t>[A-Za-z0-9-]+\.wd\d+)\.myworkdayjobs\.com/wday/cxs/[^/]+/(?P<s>[A-Za-z0-9._-]+)",
+        "workday",
+        "{t}/{s}",
+    ),
+    (
+        r"(?P<t>[A-Za-z0-9-]+\.wd\d+)\.myworkdayjobs\.com/(?:[a-z]{2}-[A-Z]{2}/)?(?P<s>[A-Za-z0-9._-]+)",
+        "workday",
+        "{t}/{s}",
+    ),
+    (r"(?P<t>[A-Za-z0-9-]+)\.career\.softgarden\.de", "softgarden"),
 ]
 
 STOP_TOKENS = {"www", "jobs", "careers", "job", "apply", "boards", "job-boards", "en", "home"}
@@ -33,12 +48,18 @@ STOP_TOKENS = {"www", "jobs", "careers", "job", "apply", "boards", "job-boards",
 
 def learn_from_url(url: str) -> tuple[str, str] | None:
     """Extract (ats, token) from any known ATS URL. No network call."""
-    for pattern, ats in URL_PATTERNS:
+    for entry in URL_PATTERNS:
+        pattern, ats = entry[0], entry[1]
+        template = entry[2] if len(entry) > 2 else "{t}"
         found = re.search(pattern, url or "", re.I)
-        if found:
-            token = found.group("t")
-            if token.lower() not in STOP_TOKENS:
-                return ats, token
+        if not found:
+            continue
+        try:
+            token = template.format(**found.groupdict())
+        except (KeyError, IndexError):
+            continue
+        if token and token.lower() not in STOP_TOKENS:
+            return ats, token
     return None
 
 

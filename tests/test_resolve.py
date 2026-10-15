@@ -19,6 +19,16 @@ from jobradar.resolve import board_name, learn_from_url, variants
         ("https://careers.smartrecruiters.com/BoschGroup/744000152406179", ("smartrecruiters", "BoschGroup")),
         ("https://personio.jobs.personio.de/job/1834171", ("personio", "personio")),
         ("https://acme.recruitee.com/o/platform-engineer", ("recruitee", "acme")),
+        ("https://apply.workable.com/acme/j/ABC123", ("workable", "acme")),
+        # Workable's own job path must not be learned as an employer called "j".
+        ("https://apply.workable.com/j/ABC123", None),
+        ("https://ag.wd3.myworkdayjobs.com/Airbus/job/Senior-SRE_JR123", ("workday", "ag.wd3/Airbus")),
+        (
+            "https://ag.wd3.myworkdayjobs.com/en-US/Airbus/job/Senior-SRE_JR123",
+            ("workday", "ag.wd3/Airbus"),
+        ),
+        ("https://ag.wd3.myworkdayjobs.com/wday/cxs/ag/Airbus/jobs", ("workday", "ag.wd3/Airbus")),
+        ("https://europe-wavestone.career.softgarden.de/jobs/123", ("softgarden", "europe-wavestone")),
     ],
 )
 def test_known_ats_urls_resolve(url: str, expected: tuple[str, str]) -> None:

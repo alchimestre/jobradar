@@ -2,34 +2,13 @@
 
 from __future__ import annotations
 
-import html
 import re
 import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 
 from ..models import Job
 from ..net import Fetcher
-
-_TAG = re.compile(r"<[^>]+>")
-_WS = re.compile(r"\s+")
-
-
-def strip_html(value: str | None) -> str:
-    return _WS.sub(" ", html.unescape(_TAG.sub(" ", value or ""))).strip()
-
-
-def guess_company(title: str, fallback: str) -> str:
-    """Feeds rarely carry a company field; recover it from the posting title."""
-    # Boards suffix salary/benefit brackets ("... @ Dialectic [CHF 110'000 - 150'000]").
-    # Only *trailing* groups are stripped: "(Remote) at Kraken" must keep its employer.
-    head = re.sub(r"(\s*[\[(][^\])]*[\])])+\s*$", "", title or "").strip() or (title or "")
-    for pattern in (r"^(?P<c>[^:]{2,40}?)\s*[:—–-]\s*\S", r"\s+(?:at|@)\s+(?P<c>[^|,()]{2,40})$"):
-        found = re.search(pattern, head)
-        if found:
-            candidate = found.group("c").strip(" -–—")
-            if 2 <= len(candidate) <= 40 and not any(ch.isdigit() for ch in candidate):
-                return candidate
-    return fallback
+from .helpers import company_from_url, enrich, guess_company, strip_html
 
 
 def _first(element: ET.Element, names: tuple[str, ...]) -> str:
@@ -51,9 +30,6 @@ def _rss_date(value: str) -> str:
     return found.group(1) if found else ""
 
 
-_SLUG_COMPANY = re.compile(r"-at-([a-z0-9][a-z0-9-]{1,60})/?$", re.I)
-_SLUG_NOISE = {"chf", "eur", "usd", "gbp", "salaries", "salary", "k"}
-
 # The who-is-hiring thread attracts two kinds of non-offers: candidates pasting the
 # "who wants to be hired?" profile, and comments that are not formatted as a posting at
 # all. Both used to become rows whose *title* was the entire comment text.
@@ -63,26 +39,6 @@ CANDIDATE_POST_RE = re.compile(
     r"looking for (?:a |new )?(?:job|role|position|opportunit)",
     re.I,
 )
-
-
-def _trim_slug_tail(slug: str) -> str:
-    """`dialectic-chf-110-000` -> `dialectic`: stop at the first numeric/currency token."""
-    keep: list[str] = []
-    for token in slug.split("-"):
-        if token.isdigit() or token.lower() in _SLUG_NOISE:
-            break
-        keep.append(token)
-    return "-".join(keep)
-
-
-def company_from_url(url: str) -> str:
-    """Boards like cryptojobslist encode the employer in the URL slug (`...-at-chainlink`)."""
-    path = (url or "").split("?")[0].rstrip("/")
-    found = _SLUG_COMPANY.search(path)
-    if not found:
-        return ""
-    slug = _trim_slug_tail(found.group(1)) or found.group(1)
-    return slug.replace("-", " ").title()
 
 
 def fetch_rss(fetcher: Fetcher, url: str, name: str, company: str = "") -> list[Job]:
@@ -205,7 +161,9 @@ def fetch_hn_whoishiring(fetcher: Fetcher, url: str, name: str) -> list[Job]:
 
 
 FEED_FETCHERS = {
-    "rss": lambda fetcher, spec: fetch_rss(fetcher, spec["url"], spec["name"], spec.get("company", "")),
+    "rss": lambda fetcher, spec: enrich(
+        fetcher, fetch_rss(fetcher, spec["url"], spec["name"], spec.get("company", "")), spec
+    ),
     "remoteok": lambda fetcher, spec: fetch_remoteok(fetcher, spec["url"], spec["name"]),
     "arbeitnow": lambda fetcher, spec: fetch_arbeitnow(fetcher, spec["url"], spec["name"]),
     "hn": lambda fetcher, spec: fetch_hn_whoishiring(fetcher, spec["url"], spec["name"]),

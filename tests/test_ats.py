@@ -46,6 +46,10 @@ GREENHOUSE = {
             "location": {"name": "Remote, Bangalore"},
             "first_published": "2026-05-22T09:16:29-04:00",
             "updated_at": "2026-09-14T16:01:39-04:00",
+            "content": (
+                "&lt;div&gt;&lt;p&gt;&lt;strong&gt;About&lt;/strong&gt; GitLab&lt;/p&gt;"
+                "&lt;p&gt;Kubernetes and Terraform at scale.&lt;/p&gt;&lt;/div&gt;"
+            ),
         }
     ]
 }
@@ -130,6 +134,8 @@ def test_greenhouse_unwraps_location_and_first_published() -> None:
     assert job.location == "Remote, Bangalore"
     assert job.published == "2026-05-22"
     assert job.url == "https://job-boards.greenhouse.io/gitlab/jobs/8556658002"
+    # Greenhouse escapes its `content` twice; the JD must reach the language gate as text.
+    assert job.description == "About GitLab Kubernetes and Terraform at scale."
 
 
 def test_lever_converts_epoch_millis_to_date() -> None:

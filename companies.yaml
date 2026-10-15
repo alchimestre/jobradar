@@ -17,6 +17,13 @@ companies:
   tier: ''
   auto: false
   enabled: true
+- name: Airbus
+  ats: workday
+  token: ag.wd3/Airbus
+  market: fr
+  tier: ''
+  auto: false
+  enabled: true
 - name: Airbyte
   ats: ashby
   token: airbyte
@@ -84,6 +91,13 @@ companies:
   ats: ashby
   token: astronomer
   market: other
+  tier: ''
+  auto: false
+  enabled: true
+- name: AXA
+  ats: icims_jibe
+  token: careers.axa.com
+  market: fr
   tier: ''
   auto: false
   enabled: true
@@ -240,7 +254,7 @@ companies:
   market: eu-remote
   tier: ''
   auto: false
-  enabled: true
+  enabled: false
 - name: Consensys
   ats: ashby
   token: Consensys
@@ -346,6 +360,13 @@ companies:
   tier: ''
   auto: false
   enabled: true
+- name: E.ON
+  ats: successfactors
+  token: careers.eon.com
+  market: de
+  tier: ''
+  auto: false
+  enabled: true
 - name: Eigen Labs
   ats: ashby
   token: Eigen-Labs
@@ -429,7 +450,7 @@ companies:
   market: other
   tier: ''
   auto: false
-  enabled: true
+  enabled: false
 - name: Giant Swarm
   ats: personio
   token: giant-swarm
@@ -527,14 +548,14 @@ companies:
   market: ''
   tier: ''
   auto: true
-  enabled: true
+  enabled: false
 - name: Kaiko
   ats: personio
   token: Kaiko
   market: other
   tier: ''
   auto: false
-  enabled: true
+  enabled: false
 - name: Kestra
   ats: ashby
   token: kestra
@@ -583,7 +604,7 @@ companies:
   market: de
   tier: ''
   auto: false
-  enabled: true
+  enabled: false
 - name: Ledger
   ats: ashby
   token: ledger
@@ -716,7 +737,7 @@ companies:
   market: other
   tier: ''
   auto: false
-  enabled: true
+  enabled: false
 - name: Nexthink
   ats: smartrecruiters
   token: nexthink
@@ -772,7 +793,7 @@ companies:
   market: de
   tier: ''
   auto: false
-  enabled: true
+  enabled: false
 - name: Parloa
   ats: greenhouse
   token: parloa
@@ -933,7 +954,7 @@ companies:
   market: other
   tier: ''
   auto: false
-  enabled: true
+  enabled: false
 - name: Sereact
   ats: ashby
   token: sereact
@@ -1052,7 +1073,7 @@ companies:
   market: de
   tier: ''
   auto: false
-  enabled: true
+  enabled: false
 - name: TRM Labs
   ats: ashby
   token: TRM-Labs
@@ -1102,6 +1123,13 @@ companies:
   tier: ''
   auto: false
   enabled: true
+- name: Wavestone
+  ats: softgarden
+  token: europe-wavestone
+  market: fr
+  tier: ''
+  auto: false
+  enabled: true
 - name: Wayve
   ats: ashby
   token: wayve
@@ -1115,7 +1143,7 @@ companies:
   market: other
   tier: ''
   auto: false
-  enabled: true
+  enabled: false
 - name: Weaviate
   ats: ashby
   token: weaviate

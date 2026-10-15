@@ -35,7 +35,7 @@ Python ≥3.11. Runtime dependencies: `httpx`, `PyYAML`, `textual`.
 uv run jobradar discover "Mistral AI" --write
 uv run jobradar discover "https://job-boards.greenhouse.io/gitlab/jobs/8556658002" --write
 
-# 2. poll everything (~35s for 110 boards + 7 feeds)
+# 2. poll everything (166 boards + 24 feeds; a few minutes)
 uv run jobradar scan
 
 # 3. work the queue
@@ -67,26 +67,97 @@ store stay reconcilable.
 
 ## Sources
 
-**ATS adapters** (`src/jobradar/sources/ats.py`), one function each:
+**ATS adapters** — one function per platform, in `src/jobradar/sources/ats.py` and `ats_extra.py`. The
+`ats` value is what a watchlist row names:
 
-| ATS | Endpoint |
+| `ats` | Endpoint | Token |
+|---|---|---|
+| `ashby` | `api.ashbyhq.com/posting-api/job-board/<token>?includeCompensation=true` | board slug |
+| `greenhouse` | `boards-api.greenhouse.io/v1/boards/<token>/jobs?content=true` | board slug |
+| `lever` | `api.lever.co/v0/postings/<token>?mode=json` | board slug |
+| `workable` | `apply.workable.com/api/v1/widget/accounts/<token>?details=true` | account slug |
+| `smartrecruiters` | `api.smartrecruiters.com/v1/companies/<token>/postings` | company id |
+| `personio` | `<token>.jobs.personio.de/xml?language=en` | subdomain |
+| `recruitee` | `<token>.recruitee.com/api/offers/` | subdomain |
+| `workday` | `POST https://<host>/wday/cxs/<tenant>/<site>/jobs` | `<host>/<site>`, e.g. `ag.wd3/Airbus` |
+| `icims_jibe` | `https://<host>/api/jobs?limit=100&page=N` | career-site host |
+| `successfactors` | `https://<host>/services/rss/job` | career-site host |
+| `softgarden` | `https://<tenant>.career.softgarden.de/jobs.feed.json` | tenant subdomain |
+| `join_com` | `https://join.com/candidate-api/graphql` | company slug |
+
+**Feed adapters** — the multi-employer boards. The `type` in `config.yaml` selects one:
+
+| `type` | Source | Notes |
+|---|---|---|
+| `rss` | any RSS/Atom URL | set `company:` when the feed title is not the employer |
+| `remoteok` | remoteok.com | |
+| `arbeitnow` | arbeitnow.com | mostly German JDs, so most rows land out of scope |
+| `hn` | Hacker News *Who is hiring?* | HN Algolia, one row per top-level comment |
+| `lesjeudis` | lesjeudis.com | sitemap discovery, then one page fetch per posting |
+| `free_work` | free-work.com | French tech missions, day rate in `extra` |
+| `jobicy`, `himalayas`, `workingnomads`, `landingjobs`, `jobdataapi` | global remote boards | full JD in the payload |
+| `devitjobs` | devitjobs.uk | RSS; needs `user_agent: browser` |
+| `themuse` | themuse.com | needs `user_agent: browser` |
+| `web3career` | web3.career | token required |
+| `lobsters` | lobste.rs *Who's hiring?* | quarterly thread |
+
+Every feed honours `max_pages` and `max_items`; both exist so that one broad board cannot turn a scan into
+thousands of requests. `enabled: false` on a feed or a watchlist row mutes it without forgetting it.
+
+Sources fetch in parallel (`scan_workers`, default 8; `jobradar scan --jobs N` for one run). Scoring,
+auto-learning and every database write stay on one thread in source order, so the result does not depend
+on which fetch finished first. Within a source, detail calls (a Workday JD, a sitemap page, an enriched
+teaser) run six at a time, so total concurrency is at most `scan_workers × 6`.
+
+### Credentials
+
+Keys live in `.env` beside `config.yaml` (copy `.env.example`), are referenced as `${VARIABLE}` and are
+read from `.env` or from the environment, so none is ever committed. The real environment wins, so
+`WEB3CAREER_KEY=... jobradar scan` overrides the file. Point `env_file` at another path if the file lives
+elsewhere.
+
+A source whose variable is unset is skipped and named in the scan summary, never called with a blank key.
+
+| Source | Variables | Where |
+|---|---|---|
+| web3.career | `WEB3CAREER_KEY` | `web3.career/web3-jobs-api` |
+
+```bash
+cp .env.example .env      # then fill in the values
+```
+
+**web3.career.** Create a profile at `web3.career/web3-jobs-api` and generate a token. Any URL given at
+signup is only a registration detail — the API accepts the token from anywhere, with no `Origin` or
+`Referer` check. The licence requires attribution: link out with `apply_url` rather than `url`, keep the
+token private, and add no tracking parameters.
+
+**Keyed sources that are not wired:**
+
+| Source | Gate |
 |---|---|
-| Ashby | `api.ashbyhq.com/posting-api/job-board/<token>?includeCompensation=true` |
-| Greenhouse | `boards-api.greenhouse.io/v1/boards/<token>/jobs` |
-| Lever | `api.lever.co/v0/postings/<token>?mode=json` |
-| Workable | `apply.workable.com/api/v1/widget/accounts/<token>?details=true` |
-| SmartRecruiters | `api.smartrecruiters.com/v1/companies/<token>/postings` |
-| Personio | `<token>.jobs.personio.de/xml?language=en` |
-| Recruitee | `<token>.recruitee.com/api/offers/` |
+| France Travail | **dead end as of 2026-10-15.** A registered application is not enough: the account's "Ajouter une API" list did not offer «Offres d'emploi v2», and without that subscription the token endpoint answers `invalid_client` — FT's own wording for an unknown client, not for a missing scope. The adapter was removed rather than kept as a source that cannot run |
+| Adzuna | free tier is not enough for the volume; the paid plan was declined |
+| Jooble | free key, but Cloudflare answers 403 to scripted requests |
+| Careerjet | needs an approved publisher `affid` (`careerjet.com/partners/api/`) |
+| findwork.dev | free token; not evaluated |
+| Reddit (`r/sre`, `r/devops`) | OAuth app required; monthly threads, thin signal |
+| Welcome to the Jungle / WelcomeKit | partner access only. `api.welcomekit.co` is introspectable but every data field answers `unauthorized` |
+| NoFluffJobs (PL) | undocumented partner API; rejects guessed parameters |
 
-**Feeds** (`src/jobradar/sources/feeds.py`): any RSS/Atom URL, plus native adapters for RemoteOK,
-Arbeitnow, and the monthly Hacker News *Ask HN: Who is hiring?* thread (via the HN Algolia API,
-one row per top-level comment). Only comments in the `Company | Role | Location | …` form become rows:
-a candidate's "who wants to be hired?" profile, or any pipe-less comment, is skipped — a row built from
-one carried the entire comment as its title. Roles are capped at 160 characters.
+### JD text decides everything
 
-Add feeds in `config.yaml`. Cloudflare-protected boards (jobs.mlops.community, Welcome to the Jungle,
-Wellfound, startup.jobs, SEEK) block scripted access — keep those as browser bookmarks.
+The scorer reads a posting's description to establish its language, and only English and French are in
+scope. A row that arrives with no description cannot be admitted, however good its title. Three things
+keep that from silently emptying a source:
+
+- `greenhouse` requests `content=true`, so the JD arrives with the board listing.
+- `enrich_limit: N` on a feed entry fetches the posting page for up to N short descriptions per scan and
+  replaces the teaser with the page's own text. Use it on teaser-only feeds, such as
+  `cryptocurrencyjobs.co`.
+- `list --decision out` shows what was dropped and why; `-lang-unknown` means no description ever arrived.
+
+Cloudflare- and WAF-protected boards (jobs.mlops.community, Welcome to the Jungle, Wellfound, startup.jobs,
+SEEK, APEC, Malt, Jooble) block scripted access — keep those as browser bookmarks.
 
 ## The watchlist
 
@@ -191,6 +262,17 @@ Delete it to go back to the defaults.
 
 - **Workable rate-limits** (HTTP 429) after a burst of probing; `scan` records it as a per-source error
   and continues. Add `--cache-minutes 60` to avoid re-hitting everything.
+- **A source never runs without its key.** A `${VARIABLE}` that the environment does not define leaves the
+  feed out of the scan and the variable is named in the summary, so a half-configured source reads as
+  configured-but-off rather than as a failure.
+- **`enrich_limit` is a request budget, not a row count.** It is spent on the first short descriptions in
+  feed order, so a large off-target feed spends its budget before reaching the roles that matter.
+- **Workday stops at offset 2000** and returns 20 postings per page; its JD text costs one extra request
+  per posting, capped at 200 per board per scan.
+- `devitjobs` and `themuse` answer 499 and 403 to an unknown client. They need `user_agent: browser`.
+- **`icims_jibe` and `successfactors` tokens cannot be guessed or learned.** Their token is the employer's
+  own career-site host, which no URL pattern identifies, so those two rows are added to `companies.yaml` by
+  hand. Workday and softgarden URLs *are* recognised, so a feed link adopts those boards automatically.
 - Some boards are large (200+ reqs) and mostly irrelevant; the scorer, not the board, is the filter.
 - RSS entries frequently omit the employer; `guess_company()` recovers it from `Company: Role` and
   `Role at Company` patterns, otherwise the feed title is used. Set `company:` on an RSS entry to
@@ -201,7 +283,7 @@ Delete it to go back to the defaults.
 ## Tests
 
 ```bash
-uv run pytest -q          # 170 tests: adapters vs captured payloads, scoring, store identity, scan isolation, TUI
+uv run pytest -q          # 269 tests: adapters vs captured payloads, scoring, store identity, scan isolation, TUI
 ```
 
 Adapter tests run against captured real payload shapes, so a provider changing its JSON schema fails the
@@ -220,5 +302,6 @@ src/jobradar/
   scan.py       source fan-out, auto-learning, error isolation
   store.py      SQLite schema, upsert/merge, queries
   tui.py        Textual app
-  sources/      ats.py + feeds.py
+  sources/      ats.py + ats_extra.py (per-employer), feeds.py + fr_boards.py +
+                remote_boards.py + keyed_boards.py (multi-employer), helpers.py (shared)
 ```

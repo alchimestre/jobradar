@@ -1,4 +1,12 @@
-from .ats import ATS_NAMES, FETCHERS
-from .feeds import FEED_FETCHERS
+from .ats import FETCHERS as _ATS_FETCHERS
+from .ats_extra import FETCHERS as _ATS_EXTRA_FETCHERS
+from .feeds import FEED_FETCHERS as _FEED_FETCHERS
+from .fr_boards import FETCHERS as _FR_FETCHERS
+from .keyed_boards import FETCHERS as _KEYED_FETCHERS
+from .remote_boards import FETCHERS as _REMOTE_FETCHERS
+
+FETCHERS = {**_ATS_FETCHERS, **_ATS_EXTRA_FETCHERS}
+FEED_FETCHERS = {**_FEED_FETCHERS, **_FR_FETCHERS, **_REMOTE_FETCHERS, **_KEYED_FETCHERS}
+ATS_NAMES = tuple(FETCHERS)
 
 __all__ = ["ATS_NAMES", "FETCHERS", "FEED_FETCHERS"]

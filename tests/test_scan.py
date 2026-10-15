@@ -234,3 +234,72 @@ def test_scan_skips_sources_fetched_within_the_cache_window(tmp_path, monkeypatc
 
     assert calls == ["good"]
     assert second.sources[0]["cached"] is True
+
+
+def arbeitnow_payload(title: str, company: str, url: str) -> dict:
+    return {
+        "data": [
+            {
+                "title": title,
+                "company_name": company,
+                "location": "Berlin",
+                "remote": False,
+                "url": url,
+                "created_at": 1780000000,
+                "description": (
+                    "We are looking for a platform engineer to run our Kubernetes and Terraform "
+                    "estate, owning reliability for the ML platform across Europe."
+                ),
+                "tags": [],
+                "job_types": [],
+            }
+        ]
+    }
+
+
+def test_parallel_fetch_keeps_the_serial_result_and_source_order(tmp_path, monkeypatch) -> None:
+    """Concurrency is a speed change only: same rows, same order, same decisions."""
+    monkeypatch.setenv("JOBRADAR_HOME", str(tmp_path))
+    feeds = [
+        {"name": f"feed{n}", "type": "arbeitnow", "url": f"http://feed.invalid/{n}"} for n in range(3)
+    ]
+    (tmp_path / "config.yaml").write_text(yaml.safe_dump({"feeds": feeds}))
+    (tmp_path / "companies.yaml").write_text("companies: []\n")
+    routes = {
+        f"http://feed.invalid/{n}": arbeitnow_payload(
+            f"ML Platform Engineer {n}", f"Co{n}", f"https://example.test/{n}"
+        )
+        for n in range(3)
+    }
+    monkeypatch.setattr(scan_mod, "Fetcher", lambda *a, **k: StubFetcher(routes))
+    cfg = load_config()
+
+    serial = scan_mod.scan(cfg, store.connect(tmp_path / "serial.db"), workers=1)
+    parallel = scan_mod.scan(cfg, store.connect(tmp_path / "parallel.db"), workers=4)
+
+    assert [row["source"] for row in serial.sources] == [row["source"] for row in parallel.sources]
+    assert serial.sources == parallel.sources
+    assert (serial.new, serial.scored) == (parallel.new, parallel.scored) == (3, 3)
+
+
+def test_a_muted_feed_is_never_fetched(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("JOBRADAR_HOME", str(tmp_path))
+    (tmp_path / "config.yaml").write_text(
+        "feeds:\n"
+        "  - name: muted\n    type: arbeitnow\n    url: http://feed.invalid/m\n    enabled: false\n"
+        "  - name: live\n    type: arbeitnow\n    url: http://feed.invalid/l\n"
+    )
+    (tmp_path / "companies.yaml").write_text("companies: []\n")
+    routes = {
+        "http://feed.invalid/l": arbeitnow_payload("SRE", "Co", "https://example.test/l"),
+        "http://feed.invalid/m": arbeitnow_payload("SRE", "Muted", "https://example.test/m"),
+    }
+    monkeypatch.setattr(scan_mod, "Fetcher", lambda *a, **k: StubFetcher(routes))
+    cfg = load_config()
+    conn = store.connect(tmp_path / "state.db")
+
+    report = scan_mod.scan(cfg, conn)
+
+    assert [row["source"] for row in report.sources] == ["arbeitnow:live"]
+    assert report.feeds == 1
+    assert {row["company"] for row in store.query(conn)} == {"Co"}

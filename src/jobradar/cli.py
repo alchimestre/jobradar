@@ -52,6 +52,7 @@ def cmd_scan(args) -> int:
         only=args.only,
         learn=not args.no_learn,
         cache_minutes=args.cache_minutes,
+        workers=args.jobs,
         progress=(None if args.quiet else (lambda m: print(f"  · {m}", file=sys.stderr))),
     )
     print(report.summary())
@@ -60,7 +61,14 @@ def cmd_scan(args) -> int:
     for row in report.errors:
         print(f"  error:   {row['source']}: {row['error']}", file=sys.stderr)
     if not args.quiet:
-        print(_table([dict(s) for s in report.sources if not s.get("cached")], [("source", 34), ("jobs", 6), ("error", 60)]))
+        # `jobs` is stringified because the renderer blanks a falsy value, and a board that
+        # answers with no postings must not look like the failed rows beside it.
+        print(
+            _table(
+                [dict(s, jobs=str(s.get("jobs", 0))) for s in report.sources if not s.get("cached")],
+                [("source", 34), ("jobs", 6), ("error", 60)],
+            )
+        )
     return 0
 
 
@@ -352,6 +360,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--quiet", action="store_true")
     p.add_argument("--no-learn", action="store_true", help="do not auto-add ATS boards found in feed URLs")
     p.add_argument("--cache-minutes", type=int, default=None, help="skip sources fetched within N minutes")
+    p.add_argument("--jobs", type=int, default=None, help="parallel fetches (default: scan_workers, 8)")
     p.set_defaults(func=cmd_scan)
 
     p = sub.add_parser("list", help="list stored postings")

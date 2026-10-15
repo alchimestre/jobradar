@@ -9,8 +9,63 @@ from __future__ import annotations
 import copy
 import os
 import pathlib
+import re
 
 import yaml
+
+_ENV = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}")
+_ENV_LINE = re.compile(r"^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$")
+
+
+def load_env_file(path: pathlib.Path) -> list[str]:
+    """Read `KEY=VALUE` lines from a `.env` into the environment. Returns the names loaded.
+
+    The real environment always wins, so `FOO=1 jobradar scan` still overrides the file.
+    A missing file is not an error: the keys may simply be exported instead.
+    """
+    if not path.is_file():
+        return []
+    loaded: list[str] = []
+    for line in path.read_text().splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        found = _ENV_LINE.match(stripped)
+        if not found:
+            continue
+        name, value = found.group(1), found.group(2).strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
+            value = value[1:-1]
+        if name not in os.environ:
+            os.environ[name] = value
+            loaded.append(name)
+    return loaded
+
+
+def _expand(value):
+    """`${VAR}` in config.yaml is read from the environment: keys stay out of the repo.
+
+    An unset variable keeps its placeholder rather than becoming empty. The source is then
+    skipped with the variable named, instead of being called with a blank key and 401ing.
+    """
+    if isinstance(value, str):
+        return _ENV.sub(lambda m: os.environ.get(m.group(1), m.group(0)), value)
+    if isinstance(value, dict):
+        return {key: _expand(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_expand(item) for item in value]
+    return value
+
+
+def unset_placeholders(spec: dict) -> list[str]:
+    """Environment variable names a config entry still needs before it can run."""
+    names: list[str] = []
+    for item in spec.values():
+        for value in item if isinstance(item, list) else [item]:
+            if isinstance(value, str):
+                names.extend(_ENV.findall(value))
+    return sorted(set(names))
+
 
 def root() -> pathlib.Path:
     """Repo root, overridable per-run with JOBRADAR_HOME (read at call time)."""
@@ -247,6 +302,11 @@ DEFAULTS: dict = {
     "companies_file": "companies.yaml",
     "timeout": 25,
     "cache_minutes": 0,
+    # Keys for the sources that need one: a `.env` beside this file, or wherever this points.
+    "env_file": ".env",
+    # Sources fetch in parallel: they are network-bound and mutually independent. Raise it
+    # for a cold full scan, set 1 to serialise when a provider starts rate-limiting.
+    "scan_workers": 8,
     "user_agent": "jobradar/0.1 (personal job-search poller)",
     "min_score": 3,
     # Admission scope: JD language and geography. Anything outside is stored with
@@ -277,11 +337,14 @@ def load_config(path: pathlib.Path | None = None) -> dict:
     path = path or root() / "config.yaml"
     if path.exists():
         user = yaml.safe_load(path.read_text()) or {}
+        # The user config may name the file, so it is read before any `${VAR}` is expanded.
+        named = user.get("env_file") if isinstance(user.get("env_file"), str) else None
+        load_env_file(path.parent / str(named or cfg.get("env_file", ".env")))
         for key, value in user.items():
             if isinstance(value, dict) and isinstance(cfg.get(key), dict):
-                cfg[key].update(value)
+                cfg[key].update(_expand(value))
             else:
-                cfg[key] = value
+                cfg[key] = _expand(value)
     cfg["root"] = str(root())
     return cfg
 

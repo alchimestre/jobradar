@@ -13,11 +13,11 @@ class Fetcher:
             follow_redirects=True,
         )
 
-    def get(self, url: str, tries: int = 2) -> httpx.Response:
+    def get(self, url: str, tries: int = 2, headers: dict | None = None) -> httpx.Response:
         last: Exception | None = None
         for _ in range(tries):
             try:
-                response = self.client.get(url)
+                response = self.client.get(url, headers=headers)
                 if response.status_code >= 500:
                     response.raise_for_status()
                 return response
@@ -25,13 +25,25 @@ class Fetcher:
                 last = exc
         raise last  # type: ignore[misc]
 
-    def json(self, url: str):
-        response = self.get(url)
+    def post(self, url: str, payload, tries: int = 2, headers: dict | None = None) -> httpx.Response:
+        last: Exception | None = None
+        for _ in range(tries):
+            try:
+                response = self.client.post(url, json=payload, headers=headers)
+                if response.status_code >= 500:
+                    response.raise_for_status()
+                return response
+            except httpx.HTTPError as exc:  # transient: retry once
+                last = exc
+        raise last  # type: ignore[misc]
+
+    def json(self, url: str, headers: dict | None = None):
+        response = self.get(url, headers=headers)
         response.raise_for_status()
         return response.json()
 
-    def text(self, url: str) -> str:
-        response = self.get(url)
+    def text(self, url: str, headers: dict | None = None) -> str:
+        response = self.get(url, headers=headers)
         response.raise_for_status()
         return response.text
 

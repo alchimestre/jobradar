@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 
 from ..models import Job
 from ..net import Fetcher
+from .helpers import strip_html
 
 
 def _date(value) -> str:
@@ -54,7 +55,10 @@ def fetch_ashby(fetcher: Fetcher, token: str, company: str) -> list[Job]:
 
 
 def fetch_greenhouse(fetcher: Fetcher, token: str, company: str) -> list[Job]:
-    url = f"https://boards-api.greenhouse.io/v1/boards/{token}/jobs?content=false"
+    # `content=true` is one request for the whole board and the only way to see the JD.
+    # Without it every posting reaches the language gate with an empty description and is
+    # stored out of scope, which is what happened to 130 of the 147 greenhouse rows held.
+    url = f"https://boards-api.greenhouse.io/v1/boards/{token}/jobs?content=true"
     payload = fetcher.json(url)
     out = []
     for item in payload.get("jobs") or []:
@@ -66,7 +70,7 @@ def fetch_greenhouse(fetcher: Fetcher, token: str, company: str) -> list[Job]:
                 source=f"greenhouse:{token}",
                 location=_text(item.get("location")),
                 published=_date(item.get("first_published") or item.get("updated_at")),
-                description="",
+                description=strip_html(item.get("content") or ""),
                 extra={"department": (item.get("metadata") or [{}])[0].get("value") if item.get("metadata") else None},
             )
         )
@@ -171,8 +175,6 @@ def fetch_smartrecruiters(fetcher: Fetcher, token: str, company: str) -> list[Jo
 
 
 def fetch_personio(fetcher: Fetcher, token: str, company: str) -> list[Job]:
-    from .feeds import strip_html
-
     root = ET.fromstring(fetcher.text(f"https://{token}.jobs.personio.de/xml?language=en"))
     out = []
     for position in root.iter("position"):

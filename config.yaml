@@ -30,24 +30,29 @@ allowed_regions: [eu, emea, au, unknown]
 #   countries: fr | de | ch | nl
 target_countries: [fr, de, ch, nl]
 
-# Aggregator feeds. type: rss | remoteok | arbeitnow | hn
-# Add a `company: <name>` to an rss entry when the feed title is not the employer.
+# Aggregator feeds. `type` selects an adapter from FEED_FETCHERS in
+# src/jobradar/sources/__init__.py. Add `company: <name>` to an rss entry when the feed
+# title is not the employer; add `enrich_limit: N` when the feed carries a teaser only.
 feeds:
   - name: hn-whoishiring
     type: hn
     url: https://hn.algolia.com/api/v1/search_by_date?tags=story,author_whoishiring&hitsPerPage=6
-  - name: weworkremotely-devops
+  # The site-wide feed carries every category (87 items) in one request; the per-category
+  # feeds 301 and one of them redirects nowhere usable.
+  - name: weworkremotely
     type: rss
-    url: https://weworkremotely.com/categories/remote-devops-sysadmin-jobs.rss
+    url: https://weworkremotely.com/remote-jobs.rss
   - name: euremotejobs
     type: rss
     url: https://euremotejobs.com/feed/
   - name: swissdevjobs
     type: rss
     url: https://swissdevjobs.ch/rss
+  # Muted: 28 rows fetched, 0 in scope — every JD is German, which the language filter drops.
   - name: germantechjobs
     type: rss
     url: https://germantechjobs.de/rss
+    enabled: false
   - name: remoteok
     type: remoteok
     url: https://remoteok.com/api
@@ -57,6 +62,61 @@ feeds:
   - name: cryptojobslist
     type: rss
     url: https://cryptojobslist.com/rss
+  # Teaser-only feed: the posting page has to be read before the JD-language gate
+  # can run. `enrich_limit` is the number of page fetches per scan, not per posting.
+  - name: cryptocurrencyjobs
+    type: rss
+    url: https://cryptocurrencyjobs.co/index.xml
+    enrich_limit: 15
+  # Sitemap discovery plus one page fetch per posting, so `max_items` is a request budget.
+  - name: lesjeudis
+    type: lesjeudis
+    max_items: 40
+  - name: free-work
+    type: free_work
+    contracts: [contractor]
+    items_per_page: 100
+    max_pages: 2
+    max_items: 200
+  # --- Global remote
+  - name: jobicy
+    type: jobicy
+    count: 100
+    max_pages: 2
+  - name: himalayas
+    type: himalayas
+    limit: 20
+    max_pages: 3
+  - name: workingnomads
+    type: workingnomads
+    max_items: 60
+  - name: landingjobs
+    type: landingjobs
+    limit: 20
+    max_pages: 2
+  - name: jobdataapi-fr
+    type: jobdataapi
+    country_code: FR
+    max_pages: 1
+  # Both answers 499/403 to an unknown client and need a browser user agent.
+  # Muted: UK postings fall outside the region gate, so the feed returned 0 in-scope rows.
+  - name: devitjobs-uk
+    type: devitjobs
+    user_agent: browser
+    enabled: false
+  - name: themuse
+    type: themuse
+    user_agent: browser
+    max_pages: 1
+  # --- Web3
+  - name: lobsters-whoishiring
+    type: lobsters
+    max_items: 40
+  # Keyed: skipped, and named in the scan summary, until `.env` beside this file holds a value.
+  - name: web3career
+    type: web3career
+    token: ${WEB3CAREER_KEY}
+    limit: 100
 
 # Scoring. [regex, weight, tag]. Hard negatives (see HARD_NEGATIVES in filters.py)
 # always apply; soft ones only apply when no strong target title is present.

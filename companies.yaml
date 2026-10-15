@@ -388,6 +388,13 @@ companies:
   tier: ''
   auto: false
   enabled: true
+- name: Eye Security
+  ats: ashby
+  token: eye-security
+  market: other
+  tier: ''
+  auto: false
+  enabled: true
 - name: Fireblocks
   ats: greenhouse
   token: Fireblocks

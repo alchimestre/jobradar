@@ -313,13 +313,20 @@ def fetch_devitjobs(fetcher: Fetcher, spec: dict) -> list[Job]:
         if not title or not url:
             continue
         body = entry.findtext(_CONTENT_ENCODED) or entry.findtext("description") or ""
+        location = strip_html(entry.findtext("location") or "")
+        if not location and urlsplit(endpoint).hostname == "devitjobs.fr":
+            location = "France"
+        company = ""
+        if " @ " in title:
+            company = title.rsplit(" @ ", 1)[1].split(" [", 1)[0].strip()
+        company = company or company_from_url(url) or guess_company(title, feed_title)
         out.append(
             Job(
-                company=company_from_url(url) or guess_company(title, feed_title),
+                company=company,
                 title=title,
                 url=url,
                 source=f"devitjobs:{name}",
-                location="",
+                location=location,
                 published=_date(entry.findtext("pubDate") or ""),
                 description=strip_html(body),
                 extra={"feed": feed_title},
@@ -328,6 +335,7 @@ def fetch_devitjobs(fetcher: Fetcher, spec: dict) -> list[Job]:
         if max_items and len(out) >= max_items:
             break
     return _capped(out, max_items)
+
 
 
 def fetch_themuse(fetcher: Fetcher, spec: dict) -> list[Job]:

@@ -60,6 +60,8 @@ HARD_NEGATIVES = {
     "non-engineering",
     "off-target",
     "seniority-stretch",
+    "senior-preference",
+    "software-role",
 }
 
 
@@ -196,6 +198,7 @@ class Scorer:
         hay = f"{job.title} {job.location}"
         score, reasons = 0, []
         strongest_title = 0
+        has_exclusion = False
         for pattern, weight, tag in self.title:
             if pattern.search(hay):
                 score += weight
@@ -205,10 +208,13 @@ class Scorer:
         for pattern, weight, tag in self.negative:
             if pattern.search(hay):
                 reasons.append(f"-{tag}")
-                # A soft negative (e.g. "data engineer") is overruled by a strong
-                # target-title signal; a hard one (seniority, leadership, GTM) always bites.
+                if tag in HARD_NEGATIVES and tag != "senior-preference":
+                    has_exclusion = True
+                # Hard tags apply even when several target-title rules match.
                 if tag in HARD_NEGATIVES or abs(weight) > strongest_title:
                     score += weight
+        if has_exclusion:
+            score = min(score, self.review - 1)
         scope = self.scope(job)
         if scope == "restricted":
             score -= 4
@@ -232,6 +238,8 @@ class Scorer:
             reasons.append("-off-lane" if lane == "other" else "-out-of-scope")
         # Hard exclusions last: they outrank everything, and they are stored rather
         # than dropped so the reason stays inspectable (`list --decision out`).
+        if "-software-role" in reasons:
+            decision = "out"
         if language not in self.allowed_languages:
             decision = "out"
             reasons.append(f"-lang-{language}")

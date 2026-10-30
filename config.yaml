@@ -72,9 +72,14 @@ feeds:
   - name: lesjeudis
     type: lesjeudis
     max_items: 40
+  - name: devitjobs-fr
+    type: devitjobs
+    url: https://devitjobs.fr/rss
+    user_agent: browser
+    max_items: 50
   - name: free-work
     type: free_work
-    contracts: [contractor]
+    contracts: [permanent, contractor]
     items_per_page: 100
     max_pages: 2
     max_items: 200
@@ -118,45 +123,3 @@ feeds:
     token: ${WEB3CAREER_KEY}
     limit: 100
 
-# Scoring. [regex, weight, tag]. Hard negatives (see HARD_NEGATIVES in filters.py)
-# always apply; soft ones only apply when no strong target title is present.
-title_rules:
-  - ["\\bml ?ops\\b", 6, mlops]
-  - ["\\bml ?platform\\b", 6, ml-platform]
-  - ["\\bmachine learning platform\\b", 6, ml-platform]
-  - ["\\bml ?infrastructure\\b", 6, ml-infra]
-  - ["\\bai infrastructure\\b", 5, ai-infra]
-  - ["\\bai platform\\b", 5, ai-platform]
-  - ["\\b(ml|ai) (engineer|engineering)\\b", 3, ai-ml]
-  - ["\\bplatform engineer", 4, platform]
-  - ["\\bsite reliability engineer\\b|\\bsre\\b", 3, sre]
-  - ["\\binfrastructure engineer", 3, infra]
-  - ["\\btraining platform\\b|\\binference platform\\b|\\bserving platform\\b", 5, serving]
-  - ["\\bkubernetes\\b|\\bk8s\\b", 2, k8s]
-  - ["\\bdevops\\b", 2, devops]
-  - ["\\bcloud engineer", 2, cloud]
-  - ["\\bforward deployed\\b|\\bdeployment engineer\\b|\\bsolutions engineer\\b", 2, fwd-deployed]
-  - ["\\breliability\\b", 1, reliability]
-  - ["\\bobservability\\b", 1, observability]
-  # Web3 infrastructure — admitted lane; weighted below ML/MLOps deliberately.
-  - ["\\bweb3\\b|\\bweb ?3\\b", 3, web3]
-  - ["\\bblockchain\\b", 3, blockchain]
-  - ["\\bcrypto\\b|\\bcryptocurrency\\b|\\bdigital assets?\\b", 2, crypto]
-  - ["\\bprotocol engineer\\b|\\bprotocols? (infra|infrastructure|engineering)\\b", 3, protocol]
-  - ["\\bvalidator\\b|\\bstaking\\b|\\bnode operator\\b", 3, staking]
-  - ["\\bdefi\\b|\\bdex\\b|\\brollup\\b|\\blayer ?2\\b|\\bsmart contracts?\\b|\\bsolidity\\b|\\bevm\\b", 3, web3-tech]
-  - ["\\bindexer\\b|\\brpc\\b|\\bcustody\\b|\\bwallet infrastructure\\b", 2, web3-infra]
-
-negative_rules:
-  - ["\\bintern\\b|\\bworking student\\b|\\bwerkstudent\\b|\\bapprentice", -8, intern]
-  - ["\\b(head|director|vp|chief|president)\\b", -5, leadership]
-  - ["\\bengineering manager\\b|\\bproduct manager\\b|\\bprogram manager\\b", -5, non-ic]
-  - ["\\bsales\\b|\\baccount executive\\b|\\bcustomer success\\b|\\brecruiter\\b|\\bmarketing\\b", -6, go-to-market]
-  - ["\\bgrowth\\b|\\bpartnerships?\\b|\\bcommunity\\b|\\bbusiness development\\b|\\bevangelist\\b", -6, go-to-market]
-  - ["\\bcompliance\\b|\\blegal\\b|\\bfinance\\b|\\baccounting\\b|\\baudit\\b|\\btalent\\b|\\bpeople ops\\b|\\bcounsel\\b", -6, non-engineering]
-  - ["\\bfrontend\\b|\\bmobile\\b|\\bios\\b|\\bandroid\\b|\\bqa\\b|\\btest engineer\\b", -5, off-target]
-  # Vincent is not a developer: code-grounded roles are out, not merely lower (2026-10-09).
-  - ["\\b(software|back ?end|full ?stack|front ?end) (engineer|developer)\\b|\\bsde\\b", -6, software-role]
-  - ["\\bdata scientist\\b|\\bdata analyst\\b|\\bbusiness analyst\\b", -4, off-target]
-  - ["\\bdata engineer\\b|\\bdataops\\b|\\banalytics engineer\\b", -2, data-pipeline]
-  - ["\\bstaff\\b|\\bprincipal\\b", -6, seniority-stretch]

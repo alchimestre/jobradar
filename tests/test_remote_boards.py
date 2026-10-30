@@ -356,6 +356,33 @@ def test_devitjobs_keeps_a_query_that_is_not_tracking() -> None:
     )
     assert remote_boards._without_tracking("https://devitjobs.uk/jobs/x") == "https://devitjobs.uk/jobs/x"
 
+def test_devitjobs_fr_parses_french_description_and_country() -> None:
+    feed = """<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+      <channel><title>DevITJobs.fr - tech &amp; IT jobs with salary info in France</title>
+        <item>
+          <title><![CDATA[Ingénieur Production / DevOps Azure @ Novva Partners [32 400 - 60 000 €]]]></title>
+          <link>https://devitjobs.fr/jobs/Novva-Partners-Ingnieur-Production?utm_source=our_rss_feed</link>
+          <pubDate>Fri, 30 Oct 2026 07:30:46 GMT</pubDate>
+          <content:encoded><![CDATA[<p>CDI hybride à Courbevoie (92), production Azure et observabilité.</p>]]></content:encoded>
+        </item>
+      </channel>
+    </rss>"""
+    stub = Stub(text=feed)
+    job = remote_boards.fetch_devitjobs(
+        stub,
+        {
+            "name": "devitjobs-fr",
+            "url": "https://devitjobs.fr/rss",
+            "user_agent": "browser",
+        },
+    )[0]
+    assert job.company == "Novva Partners"
+    assert job.title == "Ingénieur Production / DevOps Azure @ Novva Partners [32 400 - 60 000 €]"
+    assert job.url == "https://devitjobs.fr/jobs/Novva-Partners-Ingnieur-Production"
+    assert job.source == "devitjobs:devitjobs-fr"
+    assert job.location == "France"
+    assert job.description == "CDI hybride à Courbevoie (92), production Azure et observabilité."
+
 
 # ---------------------------------------------------------------- the muse
 

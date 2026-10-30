@@ -52,6 +52,13 @@ companies:
   tier: ''
   auto: false
   enabled: true
+- name: ALTEN
+  ats: smartrecruiters
+  token: ALTEN
+  market: ''
+  tier: ''
+  auto: true
+  enabled: true
 - name: Amber Group
   ats: ashby
   token: Amber
@@ -283,6 +290,13 @@ companies:
   tier: ''
   auto: false
   enabled: true
+- name: Databricks
+  ats: greenhouse
+  token: Databricks
+  market: fr
+  tier: ''
+  auto: false
+  enabled: true
 - name: Datadog
   ats: greenhouse
   token: datadog
@@ -430,6 +444,13 @@ companies:
   tier: ''
   auto: false
   enabled: true
+- name: Free
+  ats: smartrecruiters
+  token: Iliad-Free
+  market: ''
+  tier: ''
+  auto: true
+  enabled: true
 - name: Frontify
   ats: ashby
   token: frontify
@@ -485,6 +506,13 @@ companies:
   market: eu-remote
   tier: ''
   auto: false
+  enabled: true
+- name: H&M Group
+  ats: smartrecruiters
+  token: HMGroup
+  market: ''
+  tier: ''
+  auto: true
   enabled: true
 - name: HelloFresh
   ats: greenhouse
@@ -619,6 +647,13 @@ companies:
   tier: ''
   auto: false
   enabled: true
+- name: Lesaffre
+  ats: smartrecruiters
+  token: Lesaffre
+  market: ''
+  tier: ''
+  auto: true
+  enabled: true
 - name: Lifen
   ats: ashby
   token: lifen
@@ -664,6 +699,13 @@ companies:
 - name: Mirakl
   ats: greenhouse
   token: mirakl
+  market: fr
+  tier: ''
+  auto: false
+  enabled: true
+- name: Mistral AI
+  ats: ashby
+  token: mistral.ai
   market: fr
   tier: ''
   auto: false
@@ -990,6 +1032,13 @@ companies:
   tier: ''
   auto: false
   enabled: true
+- name: Sopra Steria
+  ats: smartrecruiters
+  token: SopraSteria1
+  market: ''
+  tier: ''
+  auto: true
+  enabled: true
 - name: Sorare
   ats: ashby
   token: sorare
@@ -1031,6 +1080,13 @@ companies:
   market: other
   tier: ''
   auto: false
+  enabled: true
+- name: SYNTEGON
+  ats: smartrecruiters
+  token: SYNTEGON
+  market: ''
+  tier: ''
+  auto: true
   enabled: true
 - name: Synthesia
   ats: ashby

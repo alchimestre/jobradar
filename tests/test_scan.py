@@ -169,6 +169,7 @@ def test_rescore_lowers_scores_that_upsert_would_have_kept(tmp_path, monkeypatch
     monkeypatch.setenv("JOBRADAR_HOME", str(tmp_path))
     write_watchlist(tmp_path, [])
     cfg = load_config()
+    cfg["title_rules"] = [[r"\bdevops\b", 1, "devops"]]
     conn = store.connect(tmp_path / "state.db")
     job = Job(company="Acme", title="DevOps Engineer", url="https://a/1", source="x", location="Remote")
     store.upsert(conn, [(job, Match(score=99, decision="high", lane="eu-remote", reasons=["+stale"]))])

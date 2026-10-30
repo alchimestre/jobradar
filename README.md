@@ -2,9 +2,8 @@
 
 One SQLite store and one terminal UI over every employer ATS board and job feed worth watching.
 
-Built for a search that was previously fed by LinkedIn notifications and APEC inbound: it turns
-~110 employer ATS boards plus seven aggregator feeds into a single ranked, deduplicated table, and
-it learns new boards from the job URLs it sees.
+Employer boards and public job feeds share one ranked, deduplicated queue.
+Job URLs from feeds add new supported employer boards to the watchlist.
 
 ```
  uv run jobradar scan
@@ -36,7 +35,7 @@ uv run jobradar --help
 uv run jobradar discover "Mistral AI" --write
 uv run jobradar discover "https://job-boards.greenhouse.io/gitlab/jobs/8556658002" --write
 
-# 2. poll everything (166 boards + 24 feeds; a few minutes)
+# 2. poll enabled employer boards and feeds
 uv run jobradar scan
 
 # 3. work the queue
@@ -95,9 +94,9 @@ store stay reconcilable.
 | `arbeitnow` | arbeitnow.com | mostly German JDs, so most rows land out of scope |
 | `hn` | Hacker News *Who is hiring?* | HN Algolia, one row per top-level comment |
 | `lesjeudis` | lesjeudis.com | sitemap discovery, then one page fetch per posting |
-| `free_work` | free-work.com | French tech missions, day rate in `extra` |
+| `free_work` | free-work.com | French permanent jobs and contract work; day rate in `extra` |
 | `jobicy`, `himalayas`, `workingnomads`, `landingjobs`, `jobdataapi` | global remote boards | full JD in the payload |
-| `devitjobs` | devitjobs.uk | RSS; needs `user_agent: browser` |
+| `devitjobs` | devitjobs.fr, devitjobs.uk | RSS; needs `user_agent: browser`; French feed enabled |
 | `themuse` | themuse.com | needs `user_agent: browser` |
 | `web3career` | web3.career | token required |
 | `lobsters` | lobste.rs *Who's hiring?* | quarterly thread |
@@ -187,18 +186,22 @@ Two ways entries appear:
 
 `filters.py` (pure functions, no I/O):
 
-- **Title rules** — weighted regexes for the target titles (`+ml-platform`, `+k8s`, `+sre`, …).
-- **Hard negatives** always apply: internships, leadership/manager titles, go-to-market, off-target
-  disciplines, and `staff`/`principal` seniority stretch.
-- **Soft negatives** only apply when no strong target title is present — a `data engineer` posting is
-  demoted, but `ML Platform Engineer, Data` is not.
+Default scoring rules live in `src/jobradar/config.py`. Set `title_rules` or `negative_rules`
+in `config.yaml` to replace the corresponding list.
+
+- **Title rules** match English and French cloud, Linux, production, observability, data-platform,
+  data-engineering, infrastructure-support, database, cloud-security, and deployment roles.
+- **Core infrastructure roles** reach `high`; data engineering and nearby specialisms reach `review`.
+- **Seniority** gives otherwise equal non-senior roles a higher score. Senior roles remain eligible;
+  internships, apprenticeships, and Staff/Principal roles stay below `review`.
+- **Software roles** receive decision `out`, even when their titles also match infrastructure rules.
+- **Other negatives** cover leadership, management, sales, unrelated disciplines, and analytics engineering.
 - **Lanes** are derived from location (falling back to the country): `eu-remote`, `de`, `ch`, `fr`, `nl`,
   `au`, else `other`.
 - **Scope** demotes remote roles that explicitly exclude Europe (`scope=restricted`).
 - **Off-lane cap** — a strong title outside every target lane, or a remote posting that excludes Europe,
   is capped at `review`, never `high`.
-- **Web3 infrastructure** is an admitted lane (`+web3`, `+blockchain`, `+staking`, `+web3-tech`, …),
-  weighted **below** ML/MLOps on purpose: ML stays the preference, Web3 is not gated out.
+- **Web3 infrastructure** remains in scope through protocol, validator, staking, and node-operation titles.
 - **Scope gate (region + JD language)** — everything outside it is stored with decision `out`, never
   shown by default, and inspectable with `list --decision out`:
   - `region` = `eu` | `emea` | `au` | `americas` | `apac` | `unknown`, from the location string. A posting

@@ -238,10 +238,11 @@ Tune weights and rules in `config.yaml`; the defaults mirror the search's role-a
 Marking a posting (`a` applied, `s` shortlist, `x` ignore) writes the status **and** runs the hook
 configured for that status:
 
-```yaml
-hooks:
-  applied: python3 /Users/vincent/projects/jobsearch/scripts/log_applied.py
+```sh
+export JOBRADAR_HOOK_APPLIED='python3 /path/to/your/hook.py'
 ```
+
+Or set `hooks.applied` to your command in your own `config.yaml`. No hook is configured by default.
 
 The command receives the posting as JSON on stdin and as `JOBRADAR_*` env vars (`UID`, `COMPANY`,
 `TITLE`, `URL`, `LANE`, `STATUS`, `HOOK`); relative paths in it resolve against this repo, cwd is the

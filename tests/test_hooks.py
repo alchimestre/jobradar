@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import json
-import pathlib
+import shlex
+import subprocess
 import sys
+from pathlib import Path
 
 from jobradar import hooks
+from jobradar.config import load_config
 
 JOB = {
     "uid": "abc123",
@@ -82,6 +85,31 @@ def test_relative_script_path_resolves_against_the_repo_root(tmp_path, monkeypat
 
     assert ok is True
     assert message == f"got {len(json.dumps(JOB, default=str))} bytes"
+
+
+def test_default_config_allows_an_applied_hook_from_the_environment(monkeypatch) -> None:
+    repo = Path(__file__).resolve().parents[1]
+    monkeypatch.setenv("JOBRADAR_HOME", str(repo))
+    cfg = load_config(repo / "config.yaml")
+    assert "applied" not in (cfg.get("hooks") or {})
+    monkeypatch.setenv("JOBRADAR_HOOK_APPLIED", shlex.join([sys.executable, "-c", CONSUMER]))
+
+    ok, message = hooks.run_hook("applied", cfg, JOB)
+
+    assert ok is True
+    assert message == "Acme|abc123|applied"
+
+
+def test_tracked_files_have_no_absolute_macos_home_paths() -> None:
+    repo = Path(__file__).resolve().parents[1]
+    home_prefix = "/" + "Users/"
+    result = subprocess.run(
+        ["git", "grep", "-l", "-F", home_prefix, "--"],
+        cwd=repo,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 1, result.stdout or result.stderr
 
 
 def test_message_is_the_last_stdout_line_and_is_bounded() -> None:

@@ -5,8 +5,6 @@
 # / `x` ignore) or through `jobradar mark`. The command gets the posting as JSON on
 # stdin plus JOBRADAR_* env vars; relative paths resolve against this repo; exit 0 is
 # success. Keys are statuses: applied, shortlist, ignored, rejected, new.
-hooks:
-  applied: python3 /Users/vincent/projects/jobsearch/scripts/log_applied.py
 
 db: .jobradar/state.db
 companies_file: companies.yaml

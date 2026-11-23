@@ -89,18 +89,23 @@ store stay reconcilable.
 
 | `type` | Source | Notes |
 |---|---|---|
-| `rss` | any RSS/Atom URL | set `company:` when the feed title is not the employer |
+| `rss` | any RSS/Atom URL | `company:` overrides employer; `location:` supplies missing location before category fallback |
 | `remoteok` | remoteok.com | |
 | `arbeitnow` | arbeitnow.com | mostly German JDs, so most rows land out of scope |
 | `hn` | Hacker News *Who is hiring?* | HN Algolia, one row per top-level comment |
 | `lesjeudis` | lesjeudis.com | sitemap discovery, then one page fetch per posting |
 | `free_work` | free-work.com | French permanent jobs and contract work; day rate in `extra` |
+| `service_public` | choisirleservicepublic.gouv.fr | Digital roles from the first results page; `max_items: 20` bounds detail requests |
 | `jobicy`, `himalayas`, `workingnomads`, `landingjobs`, `jobdataapi` | global remote boards | full JD in the payload |
 | `devitjobs` | devitjobs.fr, devitjobs.uk | RSS; needs `user_agent: browser`; French feed enabled |
 | `themuse` | themuse.com | needs `user_agent: browser` |
 | `web3career` | web3.career | token required |
 | `lobsters` | lobste.rs *Who's hiring?* | quarterly thread |
 
+
+Enabled RSS sources include Remotive, NoDesk engineering, and Real Work From Anywhere DevOps/Sysadmin.
+Remotive and NoDesk return their latest feed entries, not their full job catalogues.
+Real Work From Anywhere uses `Worldwide Remote` when its feed omits a location.
 Every feed honours `max_pages` and `max_items`; both exist so that one broad board cannot turn a scan into
 thousands of requests. `enabled: false` on a feed or a watchlist row mutes it without forgetting it.
 

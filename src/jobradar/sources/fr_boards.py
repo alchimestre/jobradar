@@ -6,7 +6,9 @@ import re
 import unicodedata
 import xml.etree.ElementTree as ET
 from collections.abc import Callable
-from urllib.parse import urlencode
+from datetime import datetime
+from html.parser import HTMLParser
+from urllib.parse import urlencode, urljoin, urlsplit
 
 from ..models import Job
 from ..net import Fetcher
@@ -258,7 +260,60 @@ def fetch_free_work(fetcher: Fetcher, spec: dict) -> list[Job]:
     return out[:cap]
 
 
+def fetch_service_public(fetcher: Fetcher, spec: dict) -> list[Job]:
+    endpoint = "https://choisirleservicepublic.gouv.fr/nos-offres/filtres/domaine/3522/"
+    parser = _ServicePublicLinks()
+    parser.feed(fetcher.text(endpoint, headers=headers(spec)))
+    limit = bound(spec, "max_items", 20)
+    urls = list(parser.urls)
+    if limit > 0:
+        urls = urls[:limit]
+    out = []
+    for url in urls:
+        for posting in job_postings(fetcher.text(url, headers=headers(spec))):
+            title = strip_html(posting.get("title"))
+            if not title:
+                continue
+            organization = posting.get("hiringOrganization") or ""
+            company = organization.get("name", "") if isinstance(organization, dict) else organization
+            out.append(Job(
+                company=strip_html(company),
+                title=title,
+                url=url,
+                source=f"service_public:{spec.get('name', 'service-public')}",
+                location=_place(posting.get("jobLocation")),
+                published=_service_public_date(posting.get("datePosted", "")),
+                description=strip_html(posting.get("description") or posting.get("Description")),
+            ))
+    return out
+
+
+class _ServicePublicLinks(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.urls: dict[str, None] = {}
+
+    def handle_starttag(self, tag, attrs):
+        if tag != "a":
+            return
+        href = dict(attrs).get("href")
+        if not href:
+            return
+        url = urljoin("https://choisirleservicepublic.gouv.fr", href)
+        parts = urlsplit(url)
+        if parts.scheme == "https" and parts.netloc == "choisirleservicepublic.gouv.fr" and parts.path.startswith("/offre-emploi/"):
+            self.urls[parts._replace(query="", fragment="").geturl()] = None
+
+
+def _service_public_date(value: str) -> str:
+    try:
+        return datetime.strptime(value, "%d/%m/%Y").date().isoformat()
+    except ValueError:
+        return value[:10]
+
+
 FETCHERS: dict[str, Callable[[Fetcher, dict], list[Job]]] = {
     "lesjeudis": fetch_lesjeudis,
     "free_work": fetch_free_work,
+    "service_public": fetch_service_public,
 }

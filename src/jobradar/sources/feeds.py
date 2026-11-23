@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import html.entities
 import re
 import xml.etree.ElementTree as ET
 from datetime import UTC, datetime
@@ -41,8 +42,8 @@ CANDIDATE_POST_RE = re.compile(
 )
 
 
-def fetch_rss(fetcher: Fetcher, url: str, name: str, company: str = "") -> list[Job]:
-    root = ET.fromstring(fetcher.text(url))
+def fetch_rss(fetcher: Fetcher, url: str, name: str, company: str = "", location: str = "") -> list[Job]:
+    root = _rss_root(fetcher.text(url))
     feed_title = strip_html(root.findtext(".//channel/title") or root.findtext(".//{http://www.w3.org/2005/Atom}title") or name)
     entries = [e for e in root.iter() if e.tag.split("}")[-1].lower() in ("item", "entry")]
     out = []
@@ -61,17 +62,35 @@ def fetch_rss(fetcher: Fetcher, url: str, name: str, company: str = "") -> list[
         summary = strip_html(_first(entry, ("description", "summary", "content")))
         out.append(
             Job(
-                company=company or company_from_url(link) or guess_company(title, feed_title),
+                company=company or strip_html(_first(entry, ("company",))) or company_from_url(link) or guess_company(title, feed_title),
                 title=title,
                 url=link,
                 source=f"rss:{name}",
-                location=strip_html(_first(entry, ("location", "region", "category"))),
+                location=strip_html(_first(entry, ("location", "region"))) or location or strip_html(_first(entry, ("category",))),
                 published=published,
                 description=summary,
                 extra={"feed": feed_title},
             )
         )
     return out
+
+
+def _rss_root(document: str) -> ET.Element:
+    try:
+        return ET.fromstring(document)
+    except ET.ParseError:
+        pass
+    parts = re.split(r"(<!\[CDATA\[.*?\]\]>)", document, flags=re.DOTALL)
+    for index in range(0, len(parts), 2):
+        parts[index] = re.sub(r"&([A-Za-z][A-Za-z0-9]+);", _xml_entity, parts[index])
+        parts[index] = re.sub(r"&(?!#(?:[0-9]+|x[0-9a-fA-F]+);|amp;|lt;|gt;|quot;|apos;)", "&amp;", parts[index])
+    return ET.fromstring("".join(parts))
+
+
+def _xml_entity(match: re.Match) -> str:
+    name = match.group(1)
+    codepoint = html.entities.name2codepoint.get(name)
+    return f"&#{codepoint};" if codepoint else match.group(0)
 
 
 def fetch_remoteok(fetcher: Fetcher, url: str, name: str) -> list[Job]:
@@ -162,7 +181,7 @@ def fetch_hn_whoishiring(fetcher: Fetcher, url: str, name: str) -> list[Job]:
 
 FEED_FETCHERS = {
     "rss": lambda fetcher, spec: enrich(
-        fetcher, fetch_rss(fetcher, spec["url"], spec["name"], spec.get("company", "")), spec
+        fetcher, fetch_rss(fetcher, spec["url"], spec["name"], spec.get("company", ""), spec.get("location", "")), spec
     ),
     "remoteok": lambda fetcher, spec: fetch_remoteok(fetcher, spec["url"], spec["name"]),
     "arbeitnow": lambda fetcher, spec: fetch_arbeitnow(fetcher, spec["url"], spec["name"]),

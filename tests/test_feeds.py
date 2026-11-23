@@ -57,6 +57,33 @@ def test_rss_extracts_title_link_date_and_strips_html() -> None:
     assert job.source == "rss:wwr"
 
 
+def test_rss_handles_html_entities_and_unescaped_url_ampersands() -> None:
+    document = """<rss><channel><title>Jobs</title><item>
+      <title>Platform Engineer</title><company>Acme</company>
+      <link>https://example.test/job?a=1&amp;b=2</link>
+      <description>Acme&rsquo;s infrastructure &amp; operations</description>
+      <enclosure url="https://example.test/logo?s=200&v=4" />
+    </item><item><title>Cloud Engineer at Beta</title>
+      <link>https://example.test/2</link>
+      <description><![CDATA[<p>R&D &amp; cloud</p>]]></description>
+    </item></channel></rss>"""
+    jobs = feeds.fetch_rss(RouteStub(text=document), "https://feed", "jobs")
+    assert jobs[0].company == "Acme"
+    assert jobs[0].description == "Acme’s infrastructure & operations"
+    assert jobs[0].url == "https://example.test/job?a=1&b=2"
+    assert jobs[1].description == "R&D & cloud"
+
+
+@pytest.mark.parametrize("explicit, expected", [("", "Worldwide Remote"), ("USA", "USA")])
+def test_rss_location_default_does_not_replace_country_restrictions(explicit, expected) -> None:
+    document = f"""<rss><channel><item><title>DevOps</title><link>https://example.test/job</link>
+      <category>DevOps and Sysadmin</category><location>{explicit}</location>
+    </item></channel></rss>"""
+    spec = {"url": "https://feed", "name": "jobs", "location": "Worldwide Remote"}
+    jobs = feeds.FEED_FETCHERS["rss"](RouteStub(text=document), spec)
+    assert jobs[0].location == expected
+
+
 def test_atom_uses_href_and_guesses_company_from_title() -> None:
     job = feeds.fetch_rss(RouteStub(text=ATOM), "https://feed", "euremote")[0]
     assert job.url == "https://example.invalid/atom/2"

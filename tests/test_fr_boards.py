@@ -282,5 +282,23 @@ def test_free_work_skips_rows_without_a_title_or_slug() -> None:
 # ------------------------------------------------------------------ registry
 
 
-def test_the_registry_names_its_two_types() -> None:
-    assert set(fr.FETCHERS) == {"lesjeudis", "free_work"}
+def test_service_public_reads_bounded_unique_same_site_postings() -> None:
+    listing = """<a href="/offre-emploi/platform/">Platform</a>
+      <a href="/offre-emploi/platform/?tracking=1">Duplicate</a>
+      <a href="https://other.test/offre-emploi/unsafe/">External</a>
+      <a href="/offre-emploi/second/">Second</a>"""
+    posting = {
+        "@type": "JobPosting", "title": "Ingénieur système",
+        "hiringOrganization": "Université", "Description": "<p>Exploiter les systèmes Linux.</p>",
+        "datePosted": "23/11/2026",
+        "jobLocation": {"address": {"addressLocality": "Lyon", "addressCountry": "France"}},
+    }
+    page = '<script type="application/ld+json">' + json.dumps(posting) + '</script>'
+    fetcher = Stub(routes={"/nos-offres/": listing, "/platform/": page})
+    jobs = fr.fetch_service_public(fetcher, {"name": "public", "max_items": 1})
+    assert [(job.title, job.company, job.location, job.published) for job in jobs] == [
+        ("Ingénieur système", "Université", "Lyon, France", "2026-11-23")
+    ]
+    assert jobs[0].description == "Exploiter les systèmes Linux."
+    assert jobs[0].url == "https://choisirleservicepublic.gouv.fr/offre-emploi/platform/"
+    assert len(fetcher.urls) == 2

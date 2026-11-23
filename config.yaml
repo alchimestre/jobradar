@@ -81,7 +81,20 @@ feeds:
     items_per_page: 100
     max_pages: 2
     max_items: 200
+  - name: service-public
+    type: service_public
+    max_items: 20
   # --- Global remote
+  - name: remotive
+    type: rss
+    url: https://remotive.com/remote-jobs/feed
+  - name: nodesk-engineering
+    type: rss
+    url: https://nodesk.co/remote-jobs/engineering/index.xml
+  - name: realworkfromanywhere-devops
+    type: rss
+    url: https://www.realworkfromanywhere.com/remote-devops-and-sysadmin-jobs/rss.xml
+    location: Worldwide Remote
   - name: jobicy
     type: jobicy
     count: 100

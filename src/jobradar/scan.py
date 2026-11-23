@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import sqlite3
 import threading
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
-from typing import Callable
 
 from . import store
 from .config import load_companies, save_companies, unset_placeholders

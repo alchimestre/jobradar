@@ -33,8 +33,8 @@ JOIN_ENDPOINT = "https://join.com/candidate-api/graphql"
 JOIN_PAGE = 50
 JOIN_MAX_PAGES = 10
 
-_SCHEME = re.compile(r"^https?://", re.I)
-_LOCALE = re.compile(r"^[a-z]{2}-[A-Z]{2}$", re.I)
+_SCHEME = re.compile(r"^https?://", re.IGNORECASE)
+_LOCALE = re.compile(r"^[a-z]{2}-[A-Z]{2}$", re.IGNORECASE)
 
 
 def _host(token: str) -> str:
@@ -98,7 +98,7 @@ def fetch_workday(fetcher: Fetcher, token: str, company: str) -> list[Job]:
     detail_rows = [
         index
         for index, row in enumerate(rows)
-        if (row.get("externalPath") or "") and index < WORKDAY_DETAIL_LIMIT
+        if row.get("externalPath") and index < WORKDAY_DETAIL_LIMIT
     ]
     infos = gather(
         [_workday_getter(fetcher, f"{board}{rows[index].get('externalPath')}") for index in detail_rows],

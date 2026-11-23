@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 import xml.etree.ElementTree as ET
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from ..models import Job
 from ..net import Fetcher
@@ -37,7 +37,7 @@ HIRING_POST_MAX = 160
 CANDIDATE_POST_RE = re.compile(
     r"willing to relocate|#?open to work|seeking (?:a |new )?(?:job|role|position|opportunit)|"
     r"looking for (?:a |new )?(?:job|role|position|opportunit)",
-    re.I,
+    re.IGNORECASE,
 )
 
 
@@ -109,7 +109,7 @@ def fetch_arbeitnow(fetcher: Fetcher, url: str, name: str) -> list[Job]:
                 source=f"arbeitnow:{name}",
                 location=item.get("location") or "",
                 published=datetime.fromtimestamp(
-                    item.get("created_at", 0), tz=timezone.utc
+                    item.get("created_at", 0), tz=UTC
                 ).strftime("%Y-%m-%d") if item.get("created_at") else "",
                 remote=bool(item.get("remote")),
                 description=description,

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import pathlib
 import sys
 
 from jobradar import hooks
@@ -85,7 +84,7 @@ def test_relative_script_path_resolves_against_the_repo_root(tmp_path, monkeypat
 
 
 def test_message_is_the_last_stdout_line_and_is_bounded() -> None:
-    cfg = {"hooks": {"applied": [sys.executable, "-c", f"print('noise'); print('x' * 500)"]}}
+    cfg = {"hooks": {"applied": [sys.executable, "-c", "print('noise'); print('x' * 500)"]}}
     ok, message = hooks.run_hook("applied", cfg, JOB)
     assert ok is True
     assert message.startswith("xxx") and len(message) == 160

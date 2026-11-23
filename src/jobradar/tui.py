@@ -6,6 +6,7 @@ import json
 import pathlib
 import time
 import webbrowser
+from typing import ClassVar
 
 from rich.text import Text
 from textual import work
@@ -65,7 +66,7 @@ class RadarApp(App):
     #detail { height: 6; border: round $primary; padding: 0 1; }
     DataTable { height: 1fr; }
     """
-    BINDINGS = [
+    BINDINGS: ClassVar[list[Binding | tuple[str, str] | tuple[str, str, str]]] = [
         ("r", "rescan", "Rescan"),
         ("o", "open", "Open"),
         ("s", "shortlist", "Shortlist"),

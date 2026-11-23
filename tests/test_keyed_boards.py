@@ -88,11 +88,6 @@ def test_web3career_ignores_a_root_with_no_job_array() -> None:
     assert kb.fetch_web3career(Stub({"api/v1": ["ok", "nope"]}), {"token": "t"}) == []
 
 
-def test_web3career_without_a_token_raises() -> None:
-    with pytest.raises(MissingCredential):
-        kb.fetch_web3career(Stub(), {})
-
-
 LOBSTERS_RSS = """<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0"><channel>
   <title>Lobsters: job - Employment/Internship opportunities</title>

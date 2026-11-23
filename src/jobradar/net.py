@@ -23,7 +23,9 @@ class Fetcher:
                 return response
             except httpx.HTTPError as exc:  # transient: retry once
                 last = exc
-        raise last  # type: ignore[misc]
+        if last is None:
+            raise TypeError("exceptions must derive from BaseException")
+        raise last
 
     def post(self, url: str, payload, tries: int = 2, headers: dict | None = None) -> httpx.Response:
         last: Exception | None = None
@@ -35,7 +37,9 @@ class Fetcher:
                 return response
             except httpx.HTTPError as exc:  # transient: retry once
                 last = exc
-        raise last  # type: ignore[misc]
+        if last is None:
+            raise TypeError("exceptions must derive from BaseException")
+        raise last
 
     def json(self, url: str, headers: dict | None = None):
         response = self.get(url, headers=headers)

@@ -41,7 +41,7 @@ def guess_company(title: str, fallback: str) -> str:
     return fallback
 
 
-_SLUG_COMPANY = re.compile(r"-at-([a-z0-9][a-z0-9-]{1,60})/?$", re.I)
+_SLUG_COMPANY = re.compile(r"-at-([a-z0-9][a-z0-9-]{1,60})/?$", re.IGNORECASE)
 _SLUG_NOISE = {"chf", "eur", "usd", "gbp", "salaries", "salary", "k"}
 
 
@@ -129,7 +129,7 @@ def text_getter(fetcher, url: str, request_headers: dict | None = None):
 
 _LD_BLOCK = re.compile(
     r"<script[^>]*application/ld(?:\+|&#x2?B;|\\u002[bB])json[^>]*>(.*?)</script>",
-    re.I | re.S,
+    re.IGNORECASE | re.DOTALL,
 )
 
 

@@ -230,10 +230,13 @@ def counts(conn: sqlite3.Connection) -> dict:
         for row in conn.execute(f"SELECT {column} k, COUNT(*) n FROM jobs GROUP BY {column}"):
             out[key][row["k"]] = row["n"]
     total = conn.execute("SELECT COUNT(*) n FROM jobs").fetchone()["n"]
-    out["total"] = total
-    out["out_of_scope"] = out["by_decision"].get("out", 0)
-    out["in_scope"] = total - out["out_of_scope"]
-    return out
+    out_of_scope = out["by_decision"].get("out", 0)
+    return {
+        **out,
+        "total": total,
+        "out_of_scope": out_of_scope,
+        "in_scope": total - out_of_scope,
+    }
 
 
 def row_to_dict(row: sqlite3.Row) -> dict:

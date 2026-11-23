@@ -51,7 +51,7 @@ def learn_from_url(url: str) -> tuple[str, str] | None:
     for entry in URL_PATTERNS:
         pattern, ats = entry[0], entry[1]
         template = entry[2] if len(entry) > 2 else "{t}"
-        found = re.search(pattern, url or "", re.I)
+        found = re.search(pattern, url or "", re.IGNORECASE)
         if not found:
             continue
         try:
@@ -70,7 +70,6 @@ def variants(name: str) -> list[str]:
     so both the original and the lowercase form are tried.
     """
     cleaned = re.sub(r"[^\w\s-]", "", name).strip()
-    base = cleaned.lower()
     squashed = re.sub(r"[\s-]+", "", cleaned)
     dashed = re.sub(r"[\s_]+", "-", cleaned)
     words = [w for w in re.split(r"[\s-]+", cleaned) if w]

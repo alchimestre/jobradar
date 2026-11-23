@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 import xml.etree.ElementTree as ET
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from ..models import Job
 from ..net import Fetcher
@@ -17,7 +17,7 @@ def _date(value) -> str:
     if isinstance(value, (int, float)):
         seconds = value / 1000 if value > 1e11 else value
         try:
-            return datetime.fromtimestamp(seconds, tz=timezone.utc).strftime("%Y-%m-%d")
+            return datetime.fromtimestamp(seconds, tz=UTC).strftime("%Y-%m-%d")
         except (OverflowError, OSError, ValueError):
             return ""
     found = re.match(r"(\d{4}-\d{2}-\d{2})", str(value))

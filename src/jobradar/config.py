@@ -139,55 +139,65 @@ LANE_RULES: list[tuple[str, str]] = [
 REGION_IN_SCOPE: list[tuple[str, str]] = [
     (
         "au",
-        r"\baustralia\b|\bsydney\b|\bmelbourne\b|\bbrisbane\b|\bperth\b|\badelaide\b|\bcanberra\b|"
-        r"\bnew zealand\b|\bauckland\b|\bwellington\b",
+        (
+            r"\baustralia\b|\bsydney\b|\bmelbourne\b|\bbrisbane\b|\bperth\b|\badelaide\b|\bcanberra\b|"
+            r"\bnew zealand\b|\bauckland\b|\bwellington\b"
+        ),
     ),
     (
         "emea",
-        r"\bisrael\b|\btel aviv\b|\bturkey\b|\bistanbul\b|\buae\b|\bdubai\b|\babu dhabi\b|\bsaudi\b|"
-        r"\briyadh\b|\bqatar\b|\bdoha\b|\begypt\b|\bcairo\b|\bsouth africa\b|\bcape town\b|"
-        r"\bjohannesburg\b|\bkenya\b|\bnairobi\b|\bnigeria\b|\blagos\b|\bmorocco\b|\bcasablanca\b|"
-        r"\bjordan\b|\bamman\b|\barmenia\b|\bgeorgia\b|\bazerbaijan\b|\bkazakhstan\b",
+        (
+            r"\bisrael\b|\btel aviv\b|\bturkey\b|\bistanbul\b|\buae\b|\bdubai\b|\babu dhabi\b|\bsaudi\b|"
+            r"\briyadh\b|\bqatar\b|\bdoha\b|\begypt\b|\bcairo\b|\bsouth africa\b|\bcape town\b|"
+            r"\bjohannesburg\b|\bkenya\b|\bnairobi\b|\bnigeria\b|\blagos\b|\bmorocco\b|\bcasablanca\b|"
+            r"\bjordan\b|\bamman\b|\barmenia\b|\bgeorgia\b|\bazerbaijan\b|\bkazakhstan\b"
+        ),
     ),
     (
         "eu",
-        r"\bemea\b|\beurope\b|\beuropean union\b|\beu\b|\beea\b|\bschengen\b|"
-        r"\baustria\b|\bbelgium\b|\bbulgaria\b|\bcroatia\b|\bcyprus\b|\bczech\b|\bczechia\b|\bdenmark\b|"
-        r"\bestonia\b|\bfinland\b|\bfrance\b|\bgermany\b|\bgreece\b|\bhungary\b|\biceland\b|\bireland\b|"
-        r"\bitaly\b|\blatvia\b|\blithuania\b|\bluxembourg\b|\bmalta\b|\bnetherlands\b|\bnorway\b|"
-        r"\bpoland\b|\bportugal\b|\bromania\b|\bslovakia\b|\bslovenia\b|\bspain\b|\bsweden\b|"
-        r"\bswitzerland\b|\bswiss\b|\buk\b|\bunited kingdom\b|\bengland\b|\bscotland\b|\bwales\b|"
-        r"\bamsterdam\b|\brotterdam\b|\butrecht\b|\beindhoven\b|\bberlin\b|\bmunich\b|\bm[uü]nchen\b|"
-        r"\bhamburg\b|\bfrankfurt\b|\bstuttgart\b|\bcologne\b|\bk[oö]ln\b|\bd[uü]sseldorf\b|"
-        r"\bleipzig\b|\bdresden\b|\bdarmstadt\b|\bkarlsruhe\b|\bpotsdam\b|\bwalldorf\b|\bparis\b|"
-        r"\blyon\b|\blille\b|\bnantes\b|\bbordeaux\b|\btoulouse\b|\bmarseille\b|\brennes\b|"
-        r"\bgrenoble\b|\bmadrid\b|\bbarcelona\b|\blisbon\b|\bporto\b|\bdublin\b|\bwarsaw\b|\bkrakow\b|"
-        r"\bprague\b|\bbrno\b|\bstockholm\b|\bcopenhagen\b|\bhelsinki\b|\boslo\b|\bvienna\b|\bwien\b|"
-        r"\bz[uü]rich\b|\bzurich\b|\bgeneva\b|\bgeneve\b|\bbasel\b|\bbern\b|\blausanne\b|\bmilan\b|"
-        r"\brome\b|\bbrussels\b|\btallinn\b|\bvilnius\b|\briga\b|\bbudapest\b|\bbucharest\b|\bsofia\b|"
-        r"\bathens\b|\bvalencia\b|\bseville\b|\bbilbao\b|\bmalaga\b|\bcork\b|\bgalway\b|\bedinburgh\b|"
-        r"\bmanchester\b|\bbristol\b|\bcambridge\b|\boxford\b|\blondon\b",
+        (
+            r"\bemea\b|\beurope\b|\beuropean union\b|\beu\b|\beea\b|\bschengen\b|"
+            r"\baustria\b|\bbelgium\b|\bbulgaria\b|\bcroatia\b|\bcyprus\b|\bczech\b|\bczechia\b|\bdenmark\b|"
+            r"\bestonia\b|\bfinland\b|\bfrance\b|\bgermany\b|\bgreece\b|\bhungary\b|\biceland\b|\bireland\b|"
+            r"\bitaly\b|\blatvia\b|\blithuania\b|\bluxembourg\b|\bmalta\b|\bnetherlands\b|\bnorway\b|"
+            r"\bpoland\b|\bportugal\b|\bromania\b|\bslovakia\b|\bslovenia\b|\bspain\b|\bsweden\b|"
+            r"\bswitzerland\b|\bswiss\b|\buk\b|\bunited kingdom\b|\bengland\b|\bscotland\b|\bwales\b|"
+            r"\bamsterdam\b|\brotterdam\b|\butrecht\b|\beindhoven\b|\bberlin\b|\bmunich\b|\bm[uü]nchen\b|"
+            r"\bhamburg\b|\bfrankfurt\b|\bstuttgart\b|\bcologne\b|\bk[oö]ln\b|\bd[uü]sseldorf\b|"
+            r"\bleipzig\b|\bdresden\b|\bdarmstadt\b|\bkarlsruhe\b|\bpotsdam\b|\bwalldorf\b|\bparis\b|"
+            r"\blyon\b|\blille\b|\bnantes\b|\bbordeaux\b|\btoulouse\b|\bmarseille\b|\brennes\b|"
+            r"\bgrenoble\b|\bmadrid\b|\bbarcelona\b|\blisbon\b|\bporto\b|\bdublin\b|\bwarsaw\b|\bkrakow\b|"
+            r"\bprague\b|\bbrno\b|\bstockholm\b|\bcopenhagen\b|\bhelsinki\b|\boslo\b|\bvienna\b|\bwien\b|"
+            r"\bz[uü]rich\b|\bzurich\b|\bgeneva\b|\bgeneve\b|\bbasel\b|\bbern\b|\blausanne\b|\bmilan\b|"
+            r"\brome\b|\bbrussels\b|\btallinn\b|\bvilnius\b|\briga\b|\bbudapest\b|\bbucharest\b|\bsofia\b|"
+            r"\bathens\b|\bvalencia\b|\bseville\b|\bbilbao\b|\bmalaga\b|\bcork\b|\bgalway\b|\bedinburgh\b|"
+            r"\bmanchester\b|\bbristol\b|\bcambridge\b|\boxford\b|\blondon\b"
+        ),
     ),
 ]
 
 REGION_OUT_OF_SCOPE: list[tuple[str, str]] = [
     (
         "americas",
-        r"\bunited states\b|\busa\b|\bu\.s\.\b|\bus only\b|\bus-remote\b|\bus based\b|\bamericas\b|"
-        r"\bcanada\b|\btoronto\b|\bvancouver\b|\bmontreal\b|\bottawa\b|\bbrazil\b|\bs[aã]o paulo\b|"
-        r"\bmexico\b|\bargentina\b|\bbuenos aires\b|\bchile\b|\bsantiago\b|\bcolombia\b|\bbogot[aá]\b|"
-        r"\bperu\b|\blima\b|\bcosta rica\b|\bnew york\b|\bsan francisco\b|\bseattle\b|\baustin\b|"
-        r"\bboston\b|\bchicago\b|\bdenver\b|\batlanta\b|\bmiami\b|\blos angeles\b|\bsan jose\b|"
-        r"\bsunnyvale\b|\bpalo alto\b|\bbellevue\b|\bnew jersey\b|\bwashington,? d\.?c\.?\b|"
-        r"\bsan diego\b|\bdallas\b|\bhouston\b|\bphiladelphia\b|\bphoenix\b|\bminneapolis\b|\bd\.?c\.?\b",
+        (
+            r"\bunited states\b|\busa\b|\bu\.s\.\b|\bus only\b|\bus-remote\b|\bus based\b|\bamericas\b|"
+            r"\bcanada\b|\btoronto\b|\bvancouver\b|\bmontreal\b|\bottawa\b|\bbrazil\b|\bs[aã]o paulo\b|"
+            r"\bmexico\b|\bargentina\b|\bbuenos aires\b|\bchile\b|\bsantiago\b|\bcolombia\b|\bbogot[aá]\b|"
+            r"\bperu\b|\blima\b|\bcosta rica\b|\bnew york\b|\bsan francisco\b|\bseattle\b|\baustin\b|"
+            r"\bboston\b|\bchicago\b|\bdenver\b|\batlanta\b|\bmiami\b|\blos angeles\b|\bsan jose\b|"
+            r"\bsunnyvale\b|\bpalo alto\b|\bbellevue\b|\bnew jersey\b|\bwashington,? d\.?c\.?\b|"
+            r"\bsan diego\b|\bdallas\b|\bhouston\b|\bphiladelphia\b|\bphoenix\b|\bminneapolis\b|\bd\.?c\.?\b"
+        ),
     ),
     (
         "apac",
-        r"\bindia\b|\bbangalore\b|\bbengaluru\b|\bhyderabad\b|\bpune\b|\bmumbai\b|\bdelhi\b|"
-        r"\bsingapore\b|\bjapan\b|\btokyo\b|\bchina\b|\bshanghai\b|\bbeijing\b|\bshenzhen\b|"
-        r"\bhong kong\b|\bkorea\b|\bseoul\b|\btaiwan\b|\btaipei\b|\bindonesia\b|\bjakarta\b|"
-        r"\bmalaysia\b|\bkuala lumpur\b|\bthailand\b|\bbangkok\b|\bvietnam\b|\bhanoi\b|"
-        r"\bho chi minh\b|\bphilippines\b|\bmanila\b|\bpakistan\b|\bbangladesh\b",
+        (
+            r"\bindia\b|\bbangalore\b|\bbengaluru\b|\bhyderabad\b|\bpune\b|\bmumbai\b|\bdelhi\b|"
+            r"\bsingapore\b|\bjapan\b|\btokyo\b|\bchina\b|\bshanghai\b|\bbeijing\b|\bshenzhen\b|"
+            r"\bhong kong\b|\bkorea\b|\bseoul\b|\btaiwan\b|\btaipei\b|\bindonesia\b|\bjakarta\b|"
+            r"\bmalaysia\b|\bkuala lumpur\b|\bthailand\b|\bbangkok\b|\bvietnam\b|\bhanoi\b|"
+            r"\bho chi minh\b|\bphilippines\b|\bmanila\b|\bpakistan\b|\bbangladesh\b"
+        ),
     ),
 ]
 
@@ -210,33 +220,41 @@ BROAD_GEO_RE = (
 TARGET_COUNTRY_RULES: list[tuple[str, str]] = [
     (
         "fr",
-        r"\bfrance\b|\bfrench\b|\bparis\b|\blyon\b|\blille\b|\bnantes\b|\bbordeaux\b|\btoulouse\b|"
-        r"\bmarseille\b|\bsophia antipolis\b|\brennes\b|\bgrenoble\b|\bmontpellier\b|\bstrasbourg\b|"
-        r"\bnancy\b|\brouen\b|\bdijon\b|\bb[eé]thune\b|\bsaclay\b|\bissy[- ]les[- ]moulineaux\b|"
-        r"\bputeaux\b|\bnanterre\b|\bm[eé]rignac\b|\bclichy\b|\blevallois\b",
+        (
+            r"\bfrance\b|\bfrench\b|\bparis\b|\blyon\b|\blille\b|\bnantes\b|\bbordeaux\b|\btoulouse\b|"
+            r"\bmarseille\b|\bsophia antipolis\b|\brennes\b|\bgrenoble\b|\bmontpellier\b|\bstrasbourg\b|"
+            r"\bnancy\b|\brouen\b|\bdijon\b|\bb[eé]thune\b|\bsaclay\b|\bissy[- ]les[- ]moulineaux\b|"
+            r"\bputeaux\b|\bnanterre\b|\bm[eé]rignac\b|\bclichy\b|\blevallois\b"
+        ),
     ),
     (
         "de",
-        r"\bgermany\b|\bdeutschland\b|\bberlin\b|\bmunich\b|\bm[uü]nchen\b|\bhamburg\b|\bfrankfurt\b|"
-        r"\bcologne\b|\bk[oö]ln\b|\bstuttgart\b|\bleipzig\b|\bdresden\b|\bd[uü]sseldorf\b|\bdarmstadt\b|"
-        r"\bkarlsruhe\b|\bpotsdam\b|\bwalldorf\b|\bjena\b|\bbielefeld\b|\bessen\b|\bbonn\b|\bn[uü]rnberg\b|"
-        r"\bnuremberg\b|\bmannheim\b|\bfreiburg\b|\bheidelberg\b|\bm[uü]nster\b|\bbochum\b|\bdortmund\b|"
-        r"\bhannover\b|\bhanover\b|\bbremen\b|\bregensburg\b|\baugsburg\b|\bwolfsburg\b|\bingolstadt\b|"
-        r"\bleonberg\b|\bgr[uü]nwald\b|\bunterschlei[sß]heim\b|\bgarching\b|\bt[uü]bingen\b|\bravensburg\b",
+        (
+            r"\bgermany\b|\bdeutschland\b|\bberlin\b|\bmunich\b|\bm[uü]nchen\b|\bhamburg\b|\bfrankfurt\b|"
+            r"\bcologne\b|\bk[oö]ln\b|\bstuttgart\b|\bleipzig\b|\bdresden\b|\bd[uü]sseldorf\b|\bdarmstadt\b|"
+            r"\bkarlsruhe\b|\bpotsdam\b|\bwalldorf\b|\bjena\b|\bbielefeld\b|\bessen\b|\bbonn\b|\bn[uü]rnberg\b|"
+            r"\bnuremberg\b|\bmannheim\b|\bfreiburg\b|\bheidelberg\b|\bm[uü]nster\b|\bbochum\b|\bdortmund\b|"
+            r"\bhannover\b|\bhanover\b|\bbremen\b|\bregensburg\b|\baugsburg\b|\bwolfsburg\b|\bingolstadt\b|"
+            r"\bleonberg\b|\bgr[uü]nwald\b|\bunterschlei[sß]heim\b|\bgarching\b|\bt[uü]bingen\b|\bravensburg\b"
+        ),
     ),
     (
         "ch",
-        r"\bswitzerland\b|\bswiss\b|\bchf\b|\bz[uü]rich\b|\bzurich\b|\bgeneva\b|\bgen[eè]ve\b|\bbasel\b|"
-        r"\bbern\b|\blausanne\b|\bzug\b|\bwinterthur\b|\bfribourg\b|\blugano\b|\bluzern\b|\blucerne\b|"
-        r"\bst\.? gallen\b|\bvevey\b|\bneuch[aâ]tel\b|\bbienne\b|\bthun\b|\bepfl\b|\beth ?z[uü]rich\b|\bethz\b|\bswisscom\b|"
-        r"\brotkreuz\b|\bwallisellen\b|\bop[fn]ikon\b|\bdietikon\b|\bjona\b",
+        (
+            r"\bswitzerland\b|\bswiss\b|\bchf\b|\bz[uü]rich\b|\bzurich\b|\bgeneva\b|\bgen[eè]ve\b|\bbasel\b|"
+            r"\bbern\b|\blausanne\b|\bzug\b|\bwinterthur\b|\bfribourg\b|\blugano\b|\bluzern\b|\blucerne\b|"
+            r"\bst\.? gallen\b|\bvevey\b|\bneuch[aâ]tel\b|\bbienne\b|\bthun\b|\bepfl\b|\beth ?z[uü]rich\b|\bethz\b|\bswisscom\b|"
+            r"\brotkreuz\b|\bwallisellen\b|\bop[fn]ikon\b|\bdietikon\b|\bjona\b"
+        ),
     ),
     (
         "nl",
-        r"\bnetherlands\b|\bholland\b|\bamsterdam\b|\brotterdam\b|\butrecht\b|\beindhoven\b|\bden haag\b|"
-        r"\bthe hague\b|\bdelft\b|\bgroningen\b|\bhaarlem\b|\bnijmegen\b|\btilburg\b|\bmaastricht\b|"
-        r"\benschede\b|\barnhem\b|\bamersfoort\b|\bzwolle\b|\bleiden\b|\bbreda\b|\bapeldoorn\b|"
-        r"\bden bosch\b|\bhoofddorp\b|\bnieuwegein\b",
+        (
+            r"\bnetherlands\b|\bholland\b|\bamsterdam\b|\brotterdam\b|\butrecht\b|\beindhoven\b|\bden haag\b|"
+            r"\bthe hague\b|\bdelft\b|\bgroningen\b|\bhaarlem\b|\bnijmegen\b|\btilburg\b|\bmaastricht\b|"
+            r"\benschede\b|\barnhem\b|\bamersfoort\b|\bzwolle\b|\bleiden\b|\bbreda\b|\bapeldoorn\b|"
+            r"\bden bosch\b|\bhoofddorp\b|\bnieuwegein\b"
+        ),
     ),
 ]
 
@@ -245,31 +263,33 @@ TARGET_COUNTRY_RULES: list[tuple[str, str]] = [
 # the target list missed, and only the sign matters (target vs other vs unknown).
 NON_TARGET_COUNTRY_RE = "|".join(
     [
-        r"\bunited kingdom\b|\buk\b|\bengland\b|\bscotland\b|\bwales\b|\blondon\b|\bmanchester\b|"
-        r"\bedinburgh\b|\bglasgow\b|\bbleeds\b|\bbristol\b|\bcambridge\b|\boxford\b|\bsheffield\b|"
-        r"\bireland\b|\bdublin\b|\bcork\b|\bgalway\b|\bspain\b|\bmadrid\b|\bbarcelona\b|\bvalencia\b|"
-        r"\bseville\b|\bbilbao\b|\bmalaga\b|\bportugal\b|\blisbon\b|\bporto\b|\bitaly\b|\bmilan\b|"
-        r"\brome\b|\bturin\b|\baustria\b|\bvienna\b|\bwien\b|\bpoland\b|\bwarsaw\b|\bkrakow\b|"
-        r"\bwroclaw\b|\bczech\b|\bczechia\b|\bprague\b|\bbrno\b|\bdenmark\b|\bcopenhagen\b|\bsweden\b|"
-        r"\bstockholm\b|\bg[oö]teborg\b|\bnorway\b|\boslo\b|\bfinland\b|\bhelsinki\b|\bbelgium\b|"
-        r"\bbrussels\b|\bleuven\b|\bghent\b|\bantwerp\b|\bluxembourg\b|\bromania\b|\btimi[sș]oara\b|"
-        r"\bbucharest\b|\bhungary\b|\bbudapest\b|\bgreece\b|\bathens\b|\bestonia\b|\btallinn\b|"
-        r"\blatvia\b|\briga\b|\blithuania\b|\bvilnius\b|\bslovakia\b|\bbratislava\b|\bslovenia\b|"
-        r"\bljubljana\b|\bcroatia\b|\bzagreb\b|\bbulgaria\b|\bsofia\b|\bcyprus\b|\bmalta\b|\biceland\b|"
-        r"\baustralia\b|\bsydney\b|\bmelbourne\b|\bbrisbane\b|\bperth\b|\badelaide\b|\bcanberra\b|"
-        r"\bnew zealand\b|\bauckland\b|\bwellington\b|"
-        # Short US forms the region patterns miss; read from the location only, where a
-        # lowercase "us" pronoun cannot appear.
-        r"\bus\b|\busa\b|\bu\.s\.?a?\.?\b|\bus based\b|\bnorth america\b|\bnyc\b|\bn\.?y\.?c\.?\b|"
-        r"\bsf\b|\bsan fran\b|\btexas\b|\bcalifornia\b|"
-        # EMEA cities outside the target: in region, out of reach for a physical role.
-        r"\bisrael\b|\btel aviv\b|\bherzliya\b|\bhaifa\b|\bjerusalem\b|\bturkey\b|\bistanbul\b|"
-        r"\bankara\b|\buae\b|\bdubai\b|\babu dhabi\b|\bqatar\b|\bdoha\b|\bsaudi\b|\briyadh\b|"
-        r"\bkuwait\b|\bbahrain\b|\boman\b|\bmuscat\b|\blebanon\b|\bbeirut\b|\bjordan\b|\bamman\b|"
-        r"\begypt\b|\bcairo\b|\bmorocco\b|\bcasablanca\b|\btunisia\b|\btunis\b|\balgeria\b|\balgiers\b|"
-        r"\bsouth africa\b|\bcape town\b|\bjohannesburg\b|\bdurban\b|\bpretoria\b|\bkenya\b|\bnairobi\b|"
-        r"\bnigeria\b|\blagos\b|\bghana\b|\baccra\b|\barmenia\b|\byerevan\b|\bgeorgia\b|\btbilisi\b|"
-        r"\bazerbaijan\b|\bbaku\b|\bkazakhstan\b|\balmaty\b|\buzbekistan\b|\btashkent\b",
+        (
+            r"\bunited kingdom\b|\buk\b|\bengland\b|\bscotland\b|\bwales\b|\blondon\b|\bmanchester\b|"
+            r"\bedinburgh\b|\bglasgow\b|\bbleeds\b|\bbristol\b|\bcambridge\b|\boxford\b|\bsheffield\b|"
+            r"\bireland\b|\bdublin\b|\bcork\b|\bgalway\b|\bspain\b|\bmadrid\b|\bbarcelona\b|\bvalencia\b|"
+            r"\bseville\b|\bbilbao\b|\bmalaga\b|\bportugal\b|\blisbon\b|\bporto\b|\bitaly\b|\bmilan\b|"
+            r"\brome\b|\bturin\b|\baustria\b|\bvienna\b|\bwien\b|\bpoland\b|\bwarsaw\b|\bkrakow\b|"
+            r"\bwroclaw\b|\bczech\b|\bczechia\b|\bprague\b|\bbrno\b|\bdenmark\b|\bcopenhagen\b|\bsweden\b|"
+            r"\bstockholm\b|\bg[oö]teborg\b|\bnorway\b|\boslo\b|\bfinland\b|\bhelsinki\b|\bbelgium\b|"
+            r"\bbrussels\b|\bleuven\b|\bghent\b|\bantwerp\b|\bluxembourg\b|\bromania\b|\btimi[sș]oara\b|"
+            r"\bbucharest\b|\bhungary\b|\bbudapest\b|\bgreece\b|\bathens\b|\bestonia\b|\btallinn\b|"
+            r"\blatvia\b|\briga\b|\blithuania\b|\bvilnius\b|\bslovakia\b|\bbratislava\b|\bslovenia\b|"
+            r"\bljubljana\b|\bcroatia\b|\bzagreb\b|\bbulgaria\b|\bsofia\b|\bcyprus\b|\bmalta\b|\biceland\b|"
+            r"\baustralia\b|\bsydney\b|\bmelbourne\b|\bbrisbane\b|\bperth\b|\badelaide\b|\bcanberra\b|"
+            r"\bnew zealand\b|\bauckland\b|\bwellington\b|"
+            # Short US forms the region patterns miss; read from the location only, where a
+            # lowercase "us" pronoun cannot appear.
+            r"\bus\b|\busa\b|\bu\.s\.?a?\.?\b|\bus based\b|\bnorth america\b|\bnyc\b|\bn\.?y\.?c\.?\b|"
+            r"\bsf\b|\bsan fran\b|\btexas\b|\bcalifornia\b|"
+            # EMEA cities outside the target: in region, out of reach for a physical role.
+            r"\bisrael\b|\btel aviv\b|\bherzliya\b|\bhaifa\b|\bjerusalem\b|\bturkey\b|\bistanbul\b|"
+            r"\bankara\b|\buae\b|\bdubai\b|\babu dhabi\b|\bqatar\b|\bdoha\b|\bsaudi\b|\briyadh\b|"
+            r"\bkuwait\b|\bbahrain\b|\boman\b|\bmuscat\b|\blebanon\b|\bbeirut\b|\bjordan\b|\bamman\b|"
+            r"\begypt\b|\bcairo\b|\bmorocco\b|\bcasablanca\b|\btunisia\b|\btunis\b|\balgeria\b|\balgiers\b|"
+            r"\bsouth africa\b|\bcape town\b|\bjohannesburg\b|\bdurban\b|\bpretoria\b|\bkenya\b|\bnairobi\b|"
+            r"\bnigeria\b|\blagos\b|\bghana\b|\baccra\b|\barmenia\b|\byerevan\b|\bgeorgia\b|\btbilisi\b|"
+            r"\bazerbaijan\b|\bbaku\b|\bkazakhstan\b|\balmaty\b|\buzbekistan\b|\btashkent\b"
+        ),
         *[pattern for _, pattern in REGION_OUT_OF_SCOPE],
     ]
 )

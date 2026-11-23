@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import re
 import xml.etree.ElementTree as ET
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from ..models import Job
@@ -38,7 +38,7 @@ def _json(fetcher: Fetcher, spec: dict, url: str):
 def _date(value) -> str:
     """`YYYY-MM-DD` from an epoch int, an ISO timestamp or an RFC-822 feed date."""
     if isinstance(value, (int, float)) and value:
-        return datetime.fromtimestamp(value, tz=timezone.utc).strftime("%Y-%m-%d")
+        return datetime.fromtimestamp(value, tz=UTC).strftime("%Y-%m-%d")
     text = str(value or "").strip()
     found = re.match(r"(\d{4}-\d{2}-\d{2})", text)
     if found:

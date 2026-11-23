@@ -22,34 +22,34 @@ from .config import (
 )
 from .models import Job, Match
 
-REMOTE = re.compile(REMOTE_RE, re.I)
-SCOPE_BLOCKED = re.compile(SCOPE_BLOCKED_RE, re.I)
-SCOPE_OPEN = re.compile(SCOPE_OPEN_RE, re.I)
-HYBRID = re.compile(HYBRID_RE, re.I)
-BROAD_GEO = re.compile(BROAD_GEO_RE, re.I)
-NON_TARGET_COUNTRY = re.compile(NON_TARGET_COUNTRY_RE, re.I)
+REMOTE = re.compile(REMOTE_RE, re.IGNORECASE)
+SCOPE_BLOCKED = re.compile(SCOPE_BLOCKED_RE, re.IGNORECASE)
+SCOPE_OPEN = re.compile(SCOPE_OPEN_RE, re.IGNORECASE)
+HYBRID = re.compile(HYBRID_RE, re.IGNORECASE)
+BROAD_GEO = re.compile(BROAD_GEO_RE, re.IGNORECASE)
+NON_TARGET_COUNTRY = re.compile(NON_TARGET_COUNTRY_RE, re.IGNORECASE)
 
-REGION_IN = [(region, re.compile(p, re.I)) for region, p in REGION_IN_SCOPE]
-REGION_OUT = [(region, re.compile(p, re.I)) for region, p in REGION_OUT_OF_SCOPE]
-TARGET_COUNTRY = [(code, re.compile(p, re.I)) for code, p in TARGET_COUNTRY_RULES]
-WORLDWIDE = re.compile(WORLDWIDE_RE, re.I)
-GERMAN = re.compile(GERMAN_MARKERS, re.I)
-FRENCH = re.compile(FRENCH_MARKERS, re.I)
-ENGLISH = re.compile(ENGLISH_MARKERS, re.I)
+REGION_IN = [(region, re.compile(p, re.IGNORECASE)) for region, p in REGION_IN_SCOPE]
+REGION_OUT = [(region, re.compile(p, re.IGNORECASE)) for region, p in REGION_OUT_OF_SCOPE]
+TARGET_COUNTRY = [(code, re.compile(p, re.IGNORECASE)) for code, p in TARGET_COUNTRY_RULES]
+WORLDWIDE = re.compile(WORLDWIDE_RE, re.IGNORECASE)
+GERMAN = re.compile(GERMAN_MARKERS, re.IGNORECASE)
+FRENCH = re.compile(FRENCH_MARKERS, re.IGNORECASE)
+ENGLISH = re.compile(ENGLISH_MARKERS, re.IGNORECASE)
 UMLAUT = re.compile(r"[äöüßÄÖÜ]")
 FR_ACCENT = re.compile(r"[àâçéèêëîïôùûÿœ]")
 GERMAN_TITLE = re.compile(
     r"\b(entwickler|ingenieur|betreuer|mitarbeiter|referent|berater|leiter|softwareentwickler|"
     r"systemadministrator|fachbereich|stellenangebot|werkstudent|praktikant)\b",
-    re.I,
+    re.IGNORECASE,
 )
 FRENCH_TITLE = re.compile(
-    r"\b(d[eé]veloppeur|ing[eé]nieur|responsable|charg[eé]|alternance|stagiaire|candidat)\b", re.I
+    r"\b(d[eé]veloppeur|ing[eé]nieur|responsable|charg[eé]|alternance|stagiaire|candidat)\b", re.IGNORECASE
 )
 
 
 def _rules(entries) -> list[tuple[re.Pattern, int, str]]:
-    return [(re.compile(p, re.I), int(w), t) for p, w, t in entries]
+    return [(re.compile(p, re.IGNORECASE), int(w), t) for p, w, t in entries]
 
 
 HARD_NEGATIVES = {
@@ -79,7 +79,7 @@ class Scorer:
         self.title = _rules(title_rules)
         self.negative = _rules(negative_rules)
         self.high, self.review = high, review
-        self.lanes = [(lane, re.compile(p, re.I)) for lane, p in LANE_RULES]
+        self.lanes = [(lane, re.compile(p, re.IGNORECASE)) for lane, p in LANE_RULES]
         self.allowed_languages = tuple(allowed_languages)
         self.allowed_regions = tuple(allowed_regions)
         self.target_countries = tuple(target_countries)

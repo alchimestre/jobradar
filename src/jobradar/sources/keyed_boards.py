@@ -15,7 +15,7 @@ from ..net import Fetcher
 from .helpers import bound, credential, guess_company, headers, strip_html
 
 _REMOTE_RE = re.compile(
-    r"\b(remote|fully[- ]remote|t[ée]l[ée]travail|home[- ]office|work from home)\b", re.I
+    r"\b(remote|fully[- ]remote|t[ée]l[ée]travail|home[- ]office|work from home)\b", re.IGNORECASE
 )
 
 
@@ -118,7 +118,7 @@ def fetch_web3career(fetcher: Fetcher, spec: dict) -> list[Job]:
 # ---------------------------------------------------------------- lobsters
 
 LOBSTERS_FEED = "https://lobste.rs/t/job.rss"
-HIRING_THREAD_RE = re.compile(r"who(?:'|\u2019)?s hiring|who is hiring", re.I)
+HIRING_THREAD_RE = re.compile(r"who(?:'|\u2019)?s hiring|who is hiring", re.IGNORECASE)
 SHORT_ID_RE = re.compile(r"/s/([A-Za-z0-9]+)")
 MARKDOWN_LINK_RE = re.compile(r"\[([^\]]*)\]\([^)]*\)")
 LABEL_RE = re.compile(r"^([A-Za-z][A-Za-z ()/&.'-]{1,30}?)\s*:\s*(.+)$")

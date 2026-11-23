@@ -25,7 +25,7 @@ def _resolve(command: list[str]) -> list[str]:
     for index, part in enumerate(out):
         if index == 0 and part in ("python", "python3", "bash", "sh", "uv", "uvx"):
             continue
-        if "/" in part or part.endswith(".py") or part.endswith(".sh"):
+        if "/" in part or part.endswith((".py", ".sh")):
             path = pathlib.Path(part)
             if not path.is_absolute() and (root() / path).exists():
                 out[index] = str(root() / path)
@@ -63,6 +63,7 @@ def run_hook(name: str, cfg: dict, job: dict, timeout: int = 120) -> tuple[bool,
     try:
         completed = subprocess.run(
             command,
+            check=False,
             input=payload,
             capture_output=True,
             text=True,

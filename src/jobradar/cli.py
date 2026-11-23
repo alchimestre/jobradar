@@ -159,10 +159,11 @@ def cmd_mark(args) -> int:
 
     cfg = load_config()
     conn = store.connect(_db_path(cfg))
-    if not store.set_status(conn, args.uid, args.status, args.note or ""):
+    updated = store.set_status(conn, args.uid, args.status, args.note or "")
+    row = store.get(conn, args.uid) if updated else None
+    if row is None:
         print(f"no job with uid {args.uid}", file=sys.stderr)
         return 1
-    row = store.get(conn, args.uid)
     print(f"{args.uid} -> {args.status}  ({row['company']} — {row['title']})")
     if args.no_hook:
         return 0

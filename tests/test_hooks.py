@@ -108,12 +108,13 @@ def test_tracked_files_have_no_absolute_macos_home_paths() -> None:
         cwd=repo,
         capture_output=True,
         text=True,
+        check=False,
     )
     assert result.returncode == 1, result.stdout or result.stderr
 
 
 def test_message_is_the_last_stdout_line_and_is_bounded() -> None:
-    cfg = {"hooks": {"applied": [sys.executable, "-c", f"print('noise'); print('x' * 500)"]}}
+    cfg = {"hooks": {"applied": [sys.executable, "-c", "print('noise'); print('x' * 500)"]}}
     ok, message = hooks.run_hook("applied", cfg, JOB)
     assert ok is True
     assert message.startswith("xxx") and len(message) == 160

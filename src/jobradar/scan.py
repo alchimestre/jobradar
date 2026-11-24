@@ -97,8 +97,6 @@ def rescore(cfg: dict, conn: sqlite3.Connection, prune: bool = False) -> dict:
     Upsert only ever keeps the *best* score, so tightening a rule would otherwise
     leave inflated rows behind. `prune` deletes below-floor rows that were never acted on.
     """
-    import time
-
     from .models import Job as _Job
 
     scorer = _scorer(cfg)
@@ -118,10 +116,10 @@ def rescore(cfg: dict, conn: sqlite3.Connection, prune: bool = False) -> dict:
         match = scorer.match(job)
         conn.execute(
             "UPDATE jobs SET score=?, decision=?, lane=?, reasons=?, scope=?, region=?, language=?,"
-            " mode=?, country=?, last_seen=? WHERE uid=?",
+            " mode=?, country=? WHERE uid=?",
             (
                 match.score, match.decision, match.lane, ",".join(match.reasons[:6]), match.scope,
-                match.region, match.language, match.mode, match.country, int(time.time()), row["uid"],
+                match.region, match.language, match.mode, match.country, row["uid"],
             ),
         )
         changed += 1

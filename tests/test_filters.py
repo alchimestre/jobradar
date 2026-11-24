@@ -77,6 +77,21 @@ def test_non_senior_roles_rank_above_the_same_senior_role(scorer: Scorer, title:
     assert senior.decision in {"review", "high"}
 
 
+@pytest.mark.parametrize("title", ["Systems Engineer", "Lead Systems Engineer - Maritime", "Ingénieur Systèmes"])
+def test_bare_systems_engineer_is_review_not_high(scorer: Scorer, title: str) -> None:
+    assert scorer.match(make(title, "Paris, France", description=ENGLISH_JD)).decision == "review"
+
+
+@pytest.mark.parametrize("title", ["Linux Systems Engineer", "Ingénieur système Linux", "Administrateur systèmes et réseaux"])
+def test_linux_and_sysadmin_titles_stay_high(scorer: Scorer, title: str) -> None:
+    assert scorer.match(make(title, "Paris, France", description=ENGLISH_JD)).decision == "high"
+
+
+@pytest.mark.parametrize("title", ["Ingénieur systèmes électriques", "Ingénieur Systèmes Mécaniques", "IoT Embedded Systems Engineer"])
+def test_hardware_systems_titles_are_off_target(scorer: Scorer, title: str) -> None:
+    assert scorer.match(make(title, "Paris, France", description=ENGLISH_JD)).decision == "low"
+
+
 @pytest.mark.parametrize(
     "title",
     [

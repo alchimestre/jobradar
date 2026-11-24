@@ -92,7 +92,9 @@ TITLE_RULES: list[tuple[str, int, str]] = [
     (r"\bforward[- ]deployed\b|\b(?:deployment|implementation|solutions) engineer\b", 4, "fwd-deployed"),
     (r"\breliability\b", 1, "reliability"),
     (r"\b(?:observability|monitoring) (?:engineer|specialist)\b|\bing[eé]nieur(?:e)? (?:en |d['’])?(?:observabilit[eé]|supervision)\b", 6, "observability"),
-    (r"\b(?:systems? engineer|linux (?:engineer|administrator)|systems? administrator)\b|\b(?:ing[eé]nieur(?:e)?|administrat(?:eur|rice)) (?:syst[eè]mes?|linux)\b", 6, "systems"),
+    (r"\blinux (?:systems? )?(?:engineer|administrator)\b|\bsystems? administrator\b|\badministrat(?:eur|rice) (?:syst[eè]mes?|linux)\b|\bing[eé]nieur(?:e)? (?:syst[eè]mes? )?linux\b", 6, "systems"),
+    # Bare "systems engineer" is hardware systems engineering as often as infrastructure: review, never high on its own.
+    (r"\bsystems? engineer\b|\bing[eé]nieur(?:e)? syst[eè]mes?\b", 3, "systems-generic"),
     (r"\b(?:production|(?:application |cloud |it )?operations) engineer\b|\bapplication support engineer\b|\bing[eé]nieur(?:e)? (?:de production|d['’]exploitation)\b", 6, "production"),
     (r"\bdata (?:platform|infrastructure)\b|\bdata ?ops\b|\badministrat(?:eur|rice) big data\b", 6, "data-platform"),
     (r"\bdata engineer\b|\bing[eé]nieur(?:e)? (?:de |en )?(?:donn[eé]es|data)\b", 4, "data-engineering"),
@@ -120,7 +122,7 @@ NEGATIVE_RULES: list[tuple[str, int, str]] = [
     (r"\bdata scientist\b|\bdata analyst\b|\bbusiness analyst\b", -4, "off-target"),
     (r"\b(software|back ?end|full ?stack|front ?end) (engineer|developer)\b|\bsde\b", -6, "software-role"),
     (r"\banalytics engineer\b", -2, "data-pipeline"),
-    (r"\b(?:manufacturing|mechanical|industrial|electrical|civil|chemical|hardware) (?:production |operations |systems? |infrastructure )?engineer\b|\bing[eé]nieur(?:e)? (?:de )?production industrielle\b", -8, "off-target"),
+    (r"\b(?:manufacturing|mechanical|industrial|electrical|civil|chemical|hardware|embedded) (?:production |operations |systems? |infrastructure )?engineer\b|\bing[eé]nieur(?:e)? (?:de )?production industrielle\b|\bsyst[eè]mes? (?:[eé]lectri|m[eé]cani|embarqu)", -8, "off-target"),
     (r"\bs[eé]nior\b|\bsr\b", -1, "senior-preference"),
     (r"\bstaff\b|\bprincipal\b", -6, "seniority-stretch"),
 ]

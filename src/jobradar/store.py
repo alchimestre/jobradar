@@ -47,6 +47,7 @@ CREATE TABLE IF NOT EXISTS fetches (
 """
 
 STATUSES = ("new", "shortlist", "applied", "rejected", "ignored")
+STALE_AFTER_SECONDS = 7 * 86400
 
 
 def connect(db: str | pathlib.Path) -> sqlite3.Connection:
@@ -199,8 +200,12 @@ def query(
     sql = (
         "SELECT * FROM jobs WHERE "
         + " AND ".join(where)
-        # EU first, then EMEA, then AU/NZ, then anywhere unclassified.
+        # Within a decision: postings the last scans still list, then France, then EU/EMEA/AU.
+        # shortcut: "unseen for 7 days before the newest sighting" stands in for "closed";
+        # compare against each source's own last fetch if single-source scans become routine.
         + " ORDER BY decision = 'high' DESC,"
+        f" last_seen < (SELECT MAX(last_seen) FROM jobs) - {STALE_AFTER_SECONDS},"
+        " country = 'fr' DESC,"
         " CASE region WHEN 'eu' THEN 0 WHEN 'emea' THEN 1 WHEN 'au' THEN 2 ELSE 3 END,"
         " score DESC, first_seen DESC, title LIMIT ?"
     )

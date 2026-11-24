@@ -124,6 +124,14 @@ def test_query_orders_eu_before_emea_before_unclassified(conn) -> None:
     assert [r["region"] for r in store.query(conn)] == ["eu", "emea", "unknown"]
 
 
+def test_query_puts_france_first_and_unseen_postings_last(conn) -> None:
+    for company, country, score in (("Berlin", "de", 9), ("Paris", "fr", 6), ("Closed", "fr", 9)):
+        job = Job(company=company, title="Platform Engineer", url=f"https://x/{company}", source="x")
+        store.upsert(conn, [(job, Match(score=score, decision="high", lane=country, region="eu", country=country))])
+    conn.execute("UPDATE jobs SET last_seen = last_seen - ? WHERE company = 'Closed'", (store.STALE_AFTER_SECONDS + 1,))
+    assert [r["company"] for r in store.query(conn)] == ["Paris", "Berlin", "Closed"]
+
+
 def test_status_moves_and_is_validated(conn) -> None:
     job, match = pair()
     store.upsert(conn, [(job, match)])

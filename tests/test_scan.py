@@ -340,3 +340,50 @@ def test_a_malformed_reply_closes_nothing(tmp_path, monkeypatch) -> None:
     malformed = ValueError("greenhouse board 'acme' did not return a 'jobs' list")
     rows = _board_scan(tmp_path, monkeypatch, "greenhouse", [["https://a/1"], malformed])
     assert [r["closed"] for r in rows] == [""]
+
+
+class _GoneFetcher(StubFetcher):
+    """Every posting link answers 404."""
+
+    def get(self, url: str):
+        return type("Response", (), {"status_code": 404})()
+
+
+def _scan_listing(conn, monkeypatch, urls: list[str]) -> None:
+    jobs = [Job(company="Acme", title="ML Platform Engineer", url=u, source="smartrecruiters:acme", location="Berlin") for u in urls]
+    monkeypatch.setattr(scan_mod, "FETCHERS", {"smartrecruiters": lambda f, t, n: jobs})
+    scan_mod.scan(load_config(), conn)
+
+
+def _age_every_row(conn) -> None:
+    conn.execute("UPDATE jobs SET last_seen = last_seen - 2 * 86400, checked = 0")
+    conn.commit()
+
+
+@pytest.mark.parametrize("relisted,closes", [(True, False), (False, True)])
+def test_a_dead_stored_link_closes_only_a_job_no_source_still_lists(tmp_path, monkeypatch, relisted, closes) -> None:
+    monkeypatch.setenv("JOBRADAR_HOME", str(tmp_path))
+    write_watchlist(tmp_path, [{"name": "Acme", "ats": "smartrecruiters", "token": "acme"}])
+    monkeypatch.setattr(scan_mod, "Fetcher", lambda *a, **k: _GoneFetcher())
+    conn = store.connect(tmp_path / "state.db")
+    _scan_listing(conn, monkeypatch, ["https://old/1"])
+    _age_every_row(conn)
+    _scan_listing(conn, monkeypatch, ["https://new/2"] if relisted else [])
+    row = conn.execute("SELECT url, closed FROM jobs").fetchone()
+    assert (row["url"], bool(row["closed"])) == ("https://old/1", closes)
+
+
+def test_a_board_dropping_a_job_another_board_lists_keeps_it_open(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("JOBRADAR_HOME", str(tmp_path))
+    write_watchlist(tmp_path, [{"name": "Acme", "ats": "greenhouse", "token": "a"}, {"name": "Acme", "ats": "ashby", "token": "b"}])
+    monkeypatch.setattr(scan_mod, "Fetcher", lambda *a, **k: StubFetcher())
+    conn = store.connect(tmp_path / "state.db")
+
+    def listing(ats: str, url: str):
+        return lambda f, t, n: [Job(company="Acme", title="ML Platform Engineer", url=url, source=f"{ats}:{t}", location="Berlin")]
+
+    monkeypatch.setattr(scan_mod, "FETCHERS", {"greenhouse": listing("greenhouse", "https://a/1"), "ashby": lambda f, t, n: []})
+    scan_mod.scan(load_config(), conn)
+    monkeypatch.setattr(scan_mod, "FETCHERS", {"greenhouse": lambda f, t, n: [], "ashby": listing("ashby", "https://b/1")})
+    scan_mod.scan(load_config(), conn)
+    assert conn.execute("SELECT closed FROM jobs").fetchone()["closed"] == ""

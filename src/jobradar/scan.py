@@ -200,10 +200,14 @@ def scan(
         position, source_id, fetch = item
         with announce_guard:
             announce(f"fetching {source_id}")
+        started = time.time()
         try:
-            return position, source_id, fetch(fetcher), ""
+            result = position, source_id, fetch(fetcher), ""
         except Exception as exc:  # a broken board must never abort the scan
-            return position, source_id, [], f"{type(exc).__name__}: {exc}"[:200]
+            result = position, source_id, [], f"{type(exc).__name__}: {exc}"[:200]
+        with announce_guard:
+            announce(f"done {source_id} ({len(result[2])} jobs, {time.time() - started:.0f}s)")
+        return result
 
     workers = max(1, int(cfg.get("scan_workers", 8) if workers is None else workers))
     try:
@@ -255,9 +259,13 @@ def scan(
     new, seen = store.upsert(conn, batch)
     report.new, report.seen = new, seen
     board_ats = {f"{c['ats']}:{c['token']}": c["ats"] for c in companies}
+    # Any source listing the uid this scan keeps it open: the uid is (company, title), so
+    # one board dropping a requisition says nothing while another still lists it.
+    listed_now = {job.uid for _, _, jobs, _ in fetched for job in jobs}
     for _, source_id, jobs, error in fetched:
         if board_ats.get(source_id) in COMPLETE_BOARD_ATS and not error:
-            report.closed += store.close_missing(conn, source_id, {job.uid for job in jobs})
+            report.closed += store.close_missing(conn, source_id, listed_now)
+    announce(f"checking up to {cfg.get('link_checks_per_scan', LINK_CHECKS_PER_SCAN)} posting links")
     report.closed += _check_links(cfg, conn, workers)
     if report.learned:
         save_companies(all_companies)

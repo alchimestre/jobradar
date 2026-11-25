@@ -162,12 +162,18 @@ def close_missing(conn: sqlite3.Connection, source: str, live_uids: set[str]) ->
 
 
 def due_link_checks(conn: sqlite3.Connection, limit: int) -> list[sqlite3.Row]:
-    """Open, worth-applying postings whose link was not checked in the last day, oldest check first."""
+    """Open, worth-applying postings neither link-checked nor listed by any source in the last day.
+
+    A fresh listing outranks the stored link: the uid is (company, title), so a reposted
+    requisition keeps its first URL, which can 404 while the new posting is live.
+    """
+    cutoff = int(time.time()) - LINK_CHECK_INTERVAL_SECONDS
     return conn.execute(
         """SELECT uid, url FROM jobs
-           WHERE closed = '' AND url != '' AND decision IN ('high', 'review') AND checked < ?
+           WHERE closed = '' AND url != '' AND decision IN ('high', 'review')
+             AND checked < ? AND last_seen < ?
            ORDER BY checked LIMIT ?""",
-        (int(time.time()) - LINK_CHECK_INTERVAL_SECONDS, limit),
+        (cutoff, cutoff, limit),
     ).fetchall()
 
 

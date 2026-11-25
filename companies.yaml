@@ -1277,7 +1277,7 @@ companies:
   tier: ''
   auto: false
   enabled: true
-- name: veepee
+- name: Veepee
   ats: lever
   token: veepee
   market: fr

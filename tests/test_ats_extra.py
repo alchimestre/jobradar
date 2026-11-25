@@ -227,7 +227,7 @@ def test_workday_stops_at_offset_2000_and_carries_the_jd_text() -> None:
     fetcher = StubFetcher(routes={"wday": WORKDAY_DETAIL}, posts={"jobs": _workday_list})
     jobs = ats_extra.fetch_workday(fetcher, "ag.wd3/Airbus", "Airbus")
     offsets = [payload["offset"] for _, payload in fetcher.posts]
-    assert offsets == list(range(0, 2000, 20))
+    assert sorted(offsets) == list(range(0, 2000, 20))
     assert len(jobs) == 2000
     first = jobs[0]
     assert first.source == "workday:ag/Airbus"
@@ -341,3 +341,14 @@ def test_join_com_resolves_a_slug_token_from_the_board_page() -> None:
 def test_join_com_slug_without_a_company_id_raises() -> None:
     with pytest.raises(ValueError, match="no companyId"):
         ats_extra.fetch_join_com(StubFetcher(text="<html></html>"), "nope", "Nope")
+
+
+def test_workday_fails_the_board_when_one_list_page_fails() -> None:
+    def flaky(url: str, payload=None) -> dict:
+        if payload["offset"] == 40:
+            raise RuntimeError("connection reset")
+        return _workday_list(url, payload)
+
+    fetcher = StubFetcher(routes={"wday": WORKDAY_DETAIL}, posts={"jobs": flaky})
+    with pytest.raises(RuntimeError, match="list page failed"):
+        ats_extra.fetch_workday(fetcher, "ag.wd3/Airbus", "Airbus")

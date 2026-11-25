@@ -25,6 +25,9 @@ WORKDAY_MAX_OFFSET = 2000
 WORKDAY_DETAIL_LIMIT = 200
 # Serial, that limit is 200 round trips and the slowest thing in a scan.
 WORKDAY_DETAIL_WORKERS = 6
+# Pages after the first are independent once the first reports `total`: 100 serial pages of
+# ~1.2 s each made one Airbus board two minutes of a silent scan.
+WORKDAY_PAGE_WORKERS = 6
 
 JIBE_PAGE = 100
 JIBE_MAX_PAGES = 20
@@ -78,22 +81,32 @@ def _workday_getter(fetcher: Fetcher, url: str):
     return lambda: _workday_detail(fetcher, url)
 
 
+def _workday_page(fetcher: Fetcher, board: str, offset: int) -> dict:
+    response = fetcher.post(
+        f"{board}/jobs",
+        {"appliedFacets": {}, "limit": WORKDAY_PAGE, "offset": offset, "searchText": ""},
+    )
+    response.raise_for_status()
+    return response.json() or {}
+
+
 def fetch_workday(fetcher: Fetcher, token: str, company: str) -> list[Job]:
     host, tenant, site = _workday_parts(token)
     board = f"https://{host}/wday/cxs/{tenant}/{site}"
-    rows: list[dict] = []
-    offset = 0
-    while offset < WORKDAY_MAX_OFFSET:
-        response = fetcher.post(
-            f"{board}/jobs",
-            {"appliedFacets": {}, "limit": WORKDAY_PAGE, "offset": offset, "searchText": ""},
+    first = _workday_page(fetcher, board, 0)
+    rows: list[dict] = list(first.get("jobPostings") or [])
+    total = first.get("total")
+    end = min(total if isinstance(total, int) else WORKDAY_MAX_OFFSET, WORKDAY_MAX_OFFSET)
+    if len(rows) == WORKDAY_PAGE:
+        offsets = range(WORKDAY_PAGE, end, WORKDAY_PAGE)
+        pages = gather(
+            [lambda offset=offset: _workday_page(fetcher, board, offset) for offset in offsets],
+            workers=WORKDAY_PAGE_WORKERS,
         )
-        response.raise_for_status()
-        page = (response.json() or {}).get("jobPostings") or []
-        rows.extend(page)
-        if len(page) < WORKDAY_PAGE:
-            break
-        offset += WORKDAY_PAGE
+        if any(page is None for page in pages):
+            raise RuntimeError(f"workday board '{token}': a list page failed")
+        for page in pages:
+            rows.extend(page.get("jobPostings") or [])
 
     detail_rows = [
         index

@@ -16,9 +16,9 @@ from .resolve import board_name, learn_from_url
 from .sources import FEED_FETCHERS, FETCHERS
 
 LINK_CHECKS_PER_SCAN = 40
-# One request returns the whole board. Paged or capped fetchers (Workday, iCIMS, JOIN,
-# SmartRecruiters) must never be added: a partial page would close live jobs.
-COMPLETE_BOARD_ATS = frozenset({"ashby", "greenhouse", "lever", "workable", "personio", "recruitee"})
+# One request returns the whole board. Paged, capped or unproven fetchers (Workday, iCIMS,
+# JOIN, SmartRecruiters, Lever) must never be added: a partial reply would close live jobs.
+COMPLETE_BOARD_ATS = frozenset({"ashby", "greenhouse", "workable", "personio", "recruitee"})
 
 
 @dataclass

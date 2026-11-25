@@ -5,6 +5,7 @@ from __future__ import annotations
 import pathlib
 import sqlite3
 
+import pytest
 import yaml
 
 from jobradar import scan as scan_mod
@@ -306,15 +307,20 @@ def test_a_muted_feed_is_never_fetched(tmp_path, monkeypatch) -> None:
     assert {row["company"] for row in store.query(conn)} == {"Co"}
 
 
-def _board_scan(tmp_path, monkeypatch, ats: str, rounds: list[list[str]]) -> list[sqlite3.Row]:
-    """Scan one board once per round, the round naming which job URLs the board lists."""
+def _board_scan(tmp_path, monkeypatch, ats: str, rounds: list) -> list[sqlite3.Row]:
+    """Scan one board once per round: a list of listed job URLs, or an exception the fetcher raises."""
     monkeypatch.setenv("JOBRADAR_HOME", str(tmp_path))
     write_watchlist(tmp_path, [{"name": "Acme", "ats": ats, "token": "acme"}])
     monkeypatch.setattr(scan_mod, "Fetcher", lambda *a, **k: StubFetcher())
     conn = store.connect(tmp_path / "state.db")
     for urls in rounds:
-        jobs = [Job(company="Acme", title=f"ML Platform Engineer {u}", url=u, source=f"{ats}:acme", location="Berlin") for u in urls]
-        monkeypatch.setattr(scan_mod, "FETCHERS", {ats: lambda f, t, n, jobs=jobs: jobs})
+        if isinstance(urls, Exception):
+            def fetch(f, t, n, exc=urls):
+                raise exc
+        else:
+            jobs = [Job(company="Acme", title=f"ML Platform Engineer {u}", url=u, source=f"{ats}:acme", location="Berlin") for u in urls]
+            fetch = lambda f, t, n, jobs=jobs: jobs  # noqa: E731
+        monkeypatch.setattr(scan_mod, "FETCHERS", {ats: fetch})
         scan_mod.scan(load_config(), conn)
     return conn.execute("SELECT url, closed FROM jobs ORDER BY url").fetchall()
 
@@ -324,6 +330,13 @@ def test_a_complete_board_closes_what_it_stops_listing_even_when_empty(tmp_path,
     assert [bool(r["closed"]) for r in rows] == [True, True]
 
 
-def test_a_paged_board_never_closes_on_absence(tmp_path, monkeypatch) -> None:
-    rows = _board_scan(tmp_path, monkeypatch, "smartrecruiters", [["https://a/1", "https://a/2"], ["https://a/1"]])
+@pytest.mark.parametrize("ats", ["smartrecruiters", "lever"])
+def test_a_paged_or_unproven_board_never_closes_on_absence(tmp_path, monkeypatch, ats) -> None:
+    rows = _board_scan(tmp_path, monkeypatch, ats, [["https://a/1", "https://a/2"], []])
     assert [r["closed"] for r in rows] == ["", ""]
+
+
+def test_a_malformed_reply_closes_nothing(tmp_path, monkeypatch) -> None:
+    malformed = ValueError("greenhouse board 'acme' did not return a 'jobs' list")
+    rows = _board_scan(tmp_path, monkeypatch, "greenhouse", [["https://a/1"], malformed])
+    assert [r["closed"] for r in rows] == [""]

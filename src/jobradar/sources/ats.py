@@ -30,10 +30,18 @@ def _text(value) -> str:
     return str(value or "")
 
 
+def _posting_list(payload, key: str, board: str) -> list:
+    """The board's posting list; a reply without one raises, so it never reads as an empty board."""
+    postings = payload.get(key) if isinstance(payload, dict) else None
+    if not isinstance(postings, list):
+        raise ValueError(f"{board} did not return a '{key}' list")
+    return postings
+
+
 def fetch_ashby(fetcher: Fetcher, token: str, company: str) -> list[Job]:
     url = f"https://api.ashbyhq.com/posting-api/job-board/{token}?includeCompensation=true"
     payload = fetcher.json(url)
-    jobs = payload.get("jobs") or []
+    jobs = _posting_list(payload, "jobs", f"ashby board '{token}'")
     out = []
     for item in jobs:
         if item.get("isListed") is False:
@@ -61,7 +69,7 @@ def fetch_greenhouse(fetcher: Fetcher, token: str, company: str) -> list[Job]:
     url = f"https://boards-api.greenhouse.io/v1/boards/{token}/jobs?content=true"
     payload = fetcher.json(url)
     out = []
-    for item in payload.get("jobs") or []:
+    for item in _posting_list(payload, "jobs", f"greenhouse board '{token}'"):
         out.append(
             Job(
                 company=company,
@@ -131,7 +139,7 @@ def fetch_workable(fetcher: Fetcher, token: str, company: str) -> list[Job]:
     payload = fetcher.json(url)
     name = payload.get("name") or company
     out = []
-    for item in payload.get("jobs") or []:
+    for item in _posting_list(payload, "jobs", f"workable board '{token}'"):
         location = _workable_location(item)
         shortcode = item.get("shortcode") or item.get("code") or ""
         out.append(
@@ -176,6 +184,8 @@ def fetch_smartrecruiters(fetcher: Fetcher, token: str, company: str) -> list[Jo
 
 def fetch_personio(fetcher: Fetcher, token: str, company: str) -> list[Job]:
     root = ET.fromstring(fetcher.text(f"https://{token}.jobs.personio.de/xml?language=en"))
+    if root.tag != "workzag-jobs":
+        raise ValueError(f"personio board '{token}' returned <{root.tag}>, not a job feed")
     out = []
     for position in root.iter("position"):
         job_id = (position.findtext("id") or "").strip()
@@ -207,7 +217,7 @@ def fetch_personio(fetcher: Fetcher, token: str, company: str) -> list[Job]:
 def fetch_recruitee(fetcher: Fetcher, token: str, company: str) -> list[Job]:
     payload = fetcher.json(f"https://{token}.recruitee.com/api/offers/")
     out = []
-    for item in payload.get("offers") or []:
+    for item in _posting_list(payload, "offers", f"recruitee board '{token}'"):
         out.append(
             Job(
                 company=company,

@@ -184,3 +184,21 @@ def test_workable_joins_countries_from_locations() -> None:
     assert onsite_role.location == "Bucharest, Romania"
     assert onsite_role.remote is False
     assert onsite_role.url == "https://apply.workable.com/runware/j/FF7C5B881F/"
+
+
+@pytest.mark.parametrize("fetch", [ats.fetch_ashby, ats.fetch_greenhouse, ats.fetch_workable, ats.fetch_recruitee])
+@pytest.mark.parametrize("payload", [{}, {"jobs": None, "offers": None}, {"error": "not found"}, [], "oops"])
+def test_a_reply_without_a_posting_list_is_an_error(fetch, payload) -> None:
+    with pytest.raises((ValueError, AttributeError)):
+        fetch(StubFetcher(payload), "acme", "Acme")
+
+
+@pytest.mark.parametrize("fetch,payload", [(ats.fetch_greenhouse, {"jobs": []}), (ats.fetch_recruitee, {"offers": []})])
+def test_a_genuinely_empty_board_is_empty(fetch, payload) -> None:
+    assert fetch(StubFetcher(payload), "acme", "Acme") == []
+
+
+def test_personio_rejects_a_reply_that_is_not_its_job_feed() -> None:
+    with pytest.raises(ValueError):
+        ats.fetch_personio(StubFetcher(text="<html><body/></html>"), "acme", "Acme")
+    assert ats.fetch_personio(StubFetcher(text="<workzag-jobs/>"), "acme", "Acme") == []

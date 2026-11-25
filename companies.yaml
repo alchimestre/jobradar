@@ -94,6 +94,13 @@ companies:
   tier: ''
   auto: false
   enabled: true
+- name: ASSYSTEM
+  ats: smartrecruiters
+  token: ASSYSTEM
+  market: ''
+  tier: ''
+  auto: true
+  enabled: true
 - name: Astronomer
   ats: ashby
   token: astronomer
@@ -339,6 +346,13 @@ companies:
   tier: ''
   auto: false
   enabled: true
+- name: Dentego
+  ats: smartrecruiters
+  token: DENTEGO
+  market: ''
+  tier: ''
+  auto: true
+  enabled: true
 - name: Doctolib
   ats: ashby
   token: doctolib
@@ -422,6 +436,13 @@ companies:
   market: other
   tier: ''
   auto: false
+  enabled: true
+- name: Eurofins
+  ats: smartrecruiters
+  token: Eurofins
+  market: ''
+  tier: ''
+  auto: true
   enabled: true
 - name: Eye Security
   ats: ashby
@@ -507,6 +528,13 @@ companies:
   tier: ''
   auto: false
   enabled: true
+- name: Groupement Mousquetaires
+  ats: smartrecruiters
+  token: GroupementMousquetaires
+  market: ''
+  tier: ''
+  auto: true
+  enabled: true
 - name: H&M Group
   ats: smartrecruiters
   token: HMGroup
@@ -555,6 +583,13 @@ companies:
   market: de
   tier: ''
   auto: false
+  enabled: true
+- name: IOTA GROUP
+  ats: smartrecruiters
+  token: IOTAGROUP
+  market: ''
+  tier: ''
+  auto: true
   enabled: true
 - name: Isar Aerospace
   ats: greenhouse
@@ -695,6 +730,13 @@ companies:
   market: other
   tier: ''
   auto: false
+  enabled: true
+- name: METRO/MAKRO
+  ats: smartrecruiters
+  token: METROMAKRO
+  market: ''
+  tier: ''
+  auto: true
   enabled: true
 - name: Mirakl
   ats: greenhouse

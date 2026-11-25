@@ -278,7 +278,7 @@ def test_rows_can_be_sorted(tmp_path) -> None:
             assert [job["score"] for job in app.jobs] == [2, 12]
             # the re-render keeps the cursor on the same posting
             assert app.current()["uid"] == keep
-            assert "sort score ascending" in app.status_message
+            assert "sort score reversed" in app.status_message
 
     asyncio.run(scenario())
 
@@ -314,5 +314,28 @@ def test_documented_keys_reach_their_actions(tmp_path) -> None:
             await pilot.press("slash")
             await pilot.pause()
             assert app.query_one("#search", Input).has_focus
+
+    asyncio.run(scenario())
+
+
+def test_clicking_a_header_sorts_by_it_and_again_reverses(tmp_path) -> None:
+    db = tmp_path / "state.db"
+    seed(db)
+    app = app_for(db)
+
+    async def scenario() -> None:
+        async with app.run_test(size=(150, 34)) as pilot:
+            await pilot.pause()
+            table = app.query_one("#jobs", tui.DataTable)
+            titles = sorted(job["title"].lower() for job in app.jobs)
+            title_x = sum(width + 2 * table.cell_padding for key, width in app.column_layout[: [k for k, _ in app.column_layout].index("title")])
+            await pilot.click("#jobs", offset=(title_x + 2, 0))
+            await pilot.pause()
+            assert app.sort_key == "title"
+            assert [job["title"].lower() for job in app.jobs] == titles
+            await pilot.click("#jobs", offset=(title_x + 2, 0))
+            await pilot.pause()
+            assert [job["title"].lower() for job in app.jobs] == titles[::-1]
+            assert "↑" in str(table.columns["title"].label)
 
     asyncio.run(scenario())

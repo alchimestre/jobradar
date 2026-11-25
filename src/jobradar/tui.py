@@ -53,7 +53,10 @@ DECISION_STYLE = {"high": "bold cyan", "review": "", "low": "dim", "out": "dim r
 
 # Layout state (column order and widths, sort) lives in `.jobradar/tui.json` next to the
 # store, so the table looks the way it was left after a restart.
-SORT_KEYS = ("smart", "score", "company", "title", "seen", "lane")
+SORT_FIRST = ("smart", "score", "seen", "company", "title")
+SORT_KEYS = SORT_FIRST + tuple(key for key, _, _ in COLUMNS if key not in SORT_FIRST)
+DECISION_RANK = {"high": 0, "review": 1, "low": 2, "out": 3}
+STATUS_RANK = {status: rank for rank, status in enumerate(store.STATUSES)}
 MIN_WIDTH = 4
 WIDTH_STEP = 2
 
@@ -235,21 +238,22 @@ class RadarApp(App):
         self.jobs.sort(key=self._sort_value, reverse=self.sort_reverse)
 
     def _sort_value(self, job: dict):
-        if self.sort_key == "score":
-            return (-job["score"], job["company"].lower())
-        if self.sort_key == "seen":
-            return (-job["first_seen"], job["company"].lower())
-        if self.sort_key == "company":
-            return job["company"].lower()
-        if self.sort_key == "title":
-            return job["title"].lower()
-        if self.sort_key == "lane":
-            return (job["lane"], job["company"].lower())
-        return 0
+        """Best-first order for the sort column; ties fall back to company."""
+        company = job["company"].lower()
+        by_column = {
+            "dec": lambda: DECISION_RANK.get(job["decision"], len(DECISION_RANK)),
+            "status": lambda: STATUS_RANK.get(job["status"], len(STATUS_RANK)),
+            "score": lambda: -job["score"],
+            "seen": lambda: -job["first_seen"],
+            "lang": lambda: job["language"],
+        }
+        value = by_column[self.sort_key]() if self.sort_key in by_column else str(job[self.sort_key]).lower()
+        return (value, company)
 
     def _header(self, key: str) -> Text:
         index = [column for column, _ in self.column_layout].index(key)
-        return Text(COLUMN_LABELS[key], style="bold reverse" if index == self.column_focus else "")
+        arrow = (" ↑" if self.sort_reverse else " ↓") if key == self.sort_key else ""
+        return Text(COLUMN_LABELS[key] + arrow, style="bold reverse" if index == self.column_focus else "")
 
     def _clip(self, value: str, width: int) -> str:
         """Bound a cell to its column, so one long title cannot resize the table."""
@@ -401,11 +405,22 @@ class RadarApp(App):
 
     def action_cycle_sort(self) -> None:
         self.sort_key = SORT_KEYS[(SORT_KEYS.index(self.sort_key) + 1) % len(SORT_KEYS)]
+        self.sort_reverse = False
         self._after_layout_change(f"sort {self.sort_key}")
 
     def action_reverse_sort(self) -> None:
         self.sort_reverse = not self.sort_reverse
-        self._after_layout_change(f"sort {self.sort_key} {'ascending' if self.sort_reverse else 'descending'}")
+        self._after_layout_change(f"sort {self.sort_key}{' reversed' if self.sort_reverse else ''}")
+
+    def on_data_table_header_selected(self, event: DataTable.HeaderSelected) -> None:
+        """Click a header to sort by it; click it again to reverse."""
+        key = event.column_key.value
+        if key == self.sort_key:
+            self.action_reverse_sort()
+            return
+        self.sort_key = key
+        self.sort_reverse = False
+        self._after_layout_change(f"sort {key}")
 
     def action_export(self) -> None:
         path = root() / "exports"

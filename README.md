@@ -45,14 +45,25 @@ uv run jobradar tui
 TUI keys: `r` rescan · `o` open posting · `s` shortlist · `a` applied · `x` ignore · `/` filter ·
 `f` cycle decision filter (high → review → `out` → all) · `e` export markdown · `q` quit.
 Column layout: `,`/`.` move the column cursor · `[`/`]` narrow/widen that column ·
-`{`/`}` reorder it · `t` cycle the row sort (`smart`/score/company/title/seen/lane) · `T` reverse it.
-Widths, order and sort are saved to `.jobradar/tui.json` and restored on the next start.
+`{`/`}` reorder it. Widths, order and sort are saved to `.jobradar/tui.json` and restored on the next start.
+
+Sorting: click a column header to sort by it, click it again to reverse; the sorted header shows `↓`,
+or `↑` when reversed. `t` cycles smart → score → seen → company → title → the other columns; `T` reverses.
+
+| Sort | `↓` order |
+|---|---|
+| `smart` (default) | `high` first, then postings seen within 7 days of the newest scan, then France, then EU → EMEA → AU → rest, then score, then newest |
+| `score`, `seen` | highest score, newest first |
+| `dec`, `status` | high → review → low → out; new → shortlist → applied → rejected → ignored |
+| any other column | A → Z |
+
+Ties fall back to company name.
 
 ## Commands
 
 | Command | Purpose |
 |---|---|
-| `scan [--only SUBSTR] [--cache-minutes N] [--no-learn]` | fetch every source, score, store; `--only ashby:mistralai` for one source. Closes postings a whole-board ATS (Ashby, Greenhouse, Workable, Personio, Recruitee) stops listing, an empty board included; a malformed reply is an error and closes nothing. Re-checks up to `link_checks_per_scan` (40) high/review links unchecked for a day: only 404/410 close. Other boards, Lever included, close only by link check. Closing never changes `status` |
+| `scan [--only SUBSTR] [--cache-minutes N] [--no-learn]` | fetch every source, score, store; `--only ashby:mistralai` for one source. Closes postings a whole-board ATS (Ashby, Greenhouse, Workable, Personio, Recruitee) stops listing, an empty board included; a malformed reply is an error and closes nothing. Re-checks up to `link_checks_per_scan` (40) high/review links that no source listed and nothing checked for a day: only 404/410 close. Other boards, Lever included, close only by link check. Closing never changes `status` |
 | `list [--decision high\|review\|low\|out] [--lane …] [--region eu\|emea\|au\|americas\|apac\|unknown] [--mode remote\|hybrid\|onsite\|unknown] [--country fr\|de\|ch\|nl\|other\|unknown] [--language en\|fr\|de] [--min-score N] [--since 7d] [--search S] [--reason TAG] [--include-out] [--include-closed] [--json]` | query the store; out-of-scope and closed rows are hidden unless asked for |
 | `show UID` / `open UID` / `mark UID shortlist\|applied\|rejected\|ignored` | act on one posting |
 | `discover NAME\|URL… [--write] [--market de]` | resolve an employer to a verified ATS board |

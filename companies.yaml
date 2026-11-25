@@ -66,10 +66,24 @@ companies:
   tier: ''
   auto: false
   enabled: true
+- name: AMI Labs
+  ats: ashby
+  token: AMI
+  market: fr
+  tier: ''
+  auto: false
+  enabled: true
 - name: Anchorage Digital
   ats: lever
   token: anchorage
   market: other
+  tier: ''
+  auto: false
+  enabled: true
+- name: Ankorstore
+  ats: ashby
+  token: Ankorstore
+  market: fr
   tier: ''
   auto: false
   enabled: true
@@ -182,6 +196,13 @@ companies:
   ats: ashby
   token: blockstream
   market: other
+  tier: ''
+  auto: false
+  enabled: true
+- name: Brevo
+  ats: lever
+  token: brevo
+  market: fr
   tier: ''
   auto: false
   enabled: true
@@ -395,6 +416,13 @@ companies:
   tier: ''
   auto: false
   enabled: true
+- name: EcoVadis
+  ats: smartrecruiters
+  token: EcoVadis
+  market: fr
+  tier: ''
+  auto: false
+  enabled: true
 - name: Eigen Labs
   ats: ashby
   token: Eigen-Labs
@@ -443,6 +471,13 @@ companies:
   market: ''
   tier: ''
   auto: true
+  enabled: true
+- name: Exotec
+  ats: workable
+  token: exotec
+  market: fr
+  tier: ''
+  auto: false
   enabled: true
 - name: Eye Security
   ats: ashby
@@ -541,6 +576,13 @@ companies:
   market: ''
   tier: ''
   auto: true
+  enabled: true
+- name: Harmattan AI
+  ats: ashby
+  token: Harmattan-AI
+  market: fr
+  tier: ''
+  auto: false
   enabled: true
 - name: HelloFresh
   ats: greenhouse
@@ -766,6 +808,13 @@ companies:
   tier: ''
   auto: false
   enabled: true
+- name: Morpho
+  ats: ashby
+  token: Morpho
+  market: fr
+  tier: ''
+  auto: false
+  enabled: true
 - name: Mysten Labs
   ats: ashby
   token: MystenLabs
@@ -885,6 +934,13 @@ companies:
   tier: ''
   auto: false
   enabled: true
+- name: Pennylane
+  ats: ashby
+  token: Pennylane
+  market: fr
+  tier: ''
+  auto: false
+  enabled: true
 - name: Perplexity
   ats: ashby
   token: perplexity
@@ -902,6 +958,13 @@ companies:
 - name: Photoroom
   ats: ashby
   token: photoroom
+  market: fr
+  tier: ''
+  auto: false
+  enabled: true
+- name: Pigment
+  ats: lever
+  token: pigment
   market: fr
   tier: ''
   auto: false
@@ -1214,10 +1277,31 @@ companies:
   tier: ''
   auto: false
   enabled: true
+- name: veepee
+  ats: lever
+  token: veepee
+  market: fr
+  tier: ''
+  auto: false
+  enabled: true
+- name: Vestiaire Collective
+  ats: lever
+  token: vestiairecollective
+  market: fr
+  tier: ''
+  auto: false
+  enabled: true
 - name: vivenu
   ats: lever
   token: vivenu
   market: de
+  tier: ''
+  auto: false
+  enabled: true
+- name: Voodoo
+  ats: ashby
+  token: Voodoo
+  market: fr
   tier: ''
   auto: false
   enabled: true

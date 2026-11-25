@@ -148,3 +148,23 @@ def test_counts_group_by_decision_and_status(conn) -> None:
     assert result["total"] == 2
     assert result["by_decision"] == {"high": 1, "low": 1}
     assert result["by_status"] == {"new": 2}
+
+
+def test_closing_keeps_the_application_status(conn) -> None:
+    live, gone = pair(url="https://a/1"), pair(title="SRE", url="https://a/2")
+    store.upsert(conn, [live, gone])
+    store.set_status(conn, gone[0].uid, "applied")
+    assert store.close_missing(conn, "ashby:acme", {live[0].uid}) == 1
+    row = conn.execute("SELECT status, closed FROM jobs WHERE uid = ?", (gone[0].uid,)).fetchone()
+    assert (row["status"], row["closed"]) == ("applied", "gone from ashby:acme")
+    assert [r["uid"] for r in store.query(conn)] == [live[0].uid]
+    store.upsert(conn, [gone])
+    assert len(store.query(conn)) == 2
+
+
+@pytest.mark.parametrize("code,closes", [(404, True), (410, True), (403, False), (429, False), (503, False), (None, False)])
+def test_only_404_and_410_close_a_link(conn, code, closes) -> None:
+    store.upsert(conn, [pair()])
+    uid = pair()[0].uid
+    assert store.record_link_check(conn, uid, code) is closes
+    assert store.due_link_checks(conn, 10) == []

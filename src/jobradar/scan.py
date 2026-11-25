@@ -15,6 +15,11 @@ from .net import Fetcher
 from .resolve import board_name, learn_from_url
 from .sources import FEED_FETCHERS, FETCHERS
 
+LINK_CHECKS_PER_SCAN = 40
+# One request returns the whole board. Paged or capped fetchers (Workday, iCIMS, JOIN,
+# SmartRecruiters) must never be added: a partial page would close live jobs.
+COMPLETE_BOARD_ATS = frozenset({"ashby", "greenhouse", "lever", "workable", "personio", "recruitee"})
+
 
 @dataclass
 class ScanReport:
@@ -22,6 +27,7 @@ class ScanReport:
     seen: int = 0
     scored: int = 0
     out_of_scope: int = 0
+    closed: int = 0
     sources: list[dict] = field(default_factory=list)
     learned: list[dict] = field(default_factory=list)
     companies: int = 0
@@ -39,6 +45,8 @@ class ScanReport:
         )
         if self.out_of_scope:
             line += f" · {self.out_of_scope} out of scope (region/language)"
+        if self.closed:
+            line += f" · {self.closed} closed"
         if self.learned:
             line += f" · learned {len(self.learned)} ATS board(s)"
         if self.unconfigured:
@@ -246,7 +254,31 @@ def scan(
 
     new, seen = store.upsert(conn, batch)
     report.new, report.seen = new, seen
+    board_ats = {f"{c['ats']}:{c['token']}": c["ats"] for c in companies}
+    for _, source_id, jobs, error in fetched:
+        if board_ats.get(source_id) in COMPLETE_BOARD_ATS and not error:
+            report.closed += store.close_missing(conn, source_id, {job.uid for job in jobs})
+    report.closed += _check_links(cfg, conn, workers)
     if report.learned:
         save_companies(all_companies)
         announce(f"watchlist updated: +{len(report.learned)} board(s)")
     return report
+
+
+def _check_links(cfg: dict, conn: sqlite3.Connection, workers: int) -> int:
+    """Re-request a bounded batch of posting links; returns how many closed."""
+    due = store.due_link_checks(conn, int(cfg.get("link_checks_per_scan", LINK_CHECKS_PER_SCAN)))
+    fetcher = Fetcher(cfg["timeout"], cfg["user_agent"])
+
+    def status_of(url: str) -> int | None:
+        try:
+            return fetcher.get(url).status_code
+        except Exception:  # timeouts, 5xx and refusals say nothing about the posting
+            return None
+
+    try:
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            codes = list(pool.map(status_of, [row["url"] for row in due]))
+    finally:
+        fetcher.close()
+    return sum(store.record_link_check(conn, row["uid"], code) for row, code in zip(due, codes))

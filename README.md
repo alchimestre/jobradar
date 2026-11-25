@@ -52,8 +52,8 @@ Widths, order and sort are saved to `.jobradar/tui.json` and restored on the nex
 
 | Command | Purpose |
 |---|---|
-| `scan [--only SUBSTR] [--cache-minutes N] [--no-learn]` | fetch every source, score, store; `--only ashby:mistralai` for one source |
-| `list [--decision high\|review\|low\|out] [--lane …] [--region eu\|emea\|au\|americas\|apac\|unknown] [--mode remote\|hybrid\|onsite\|unknown] [--country fr\|de\|ch\|nl\|other\|unknown] [--language en\|fr\|de] [--min-score N] [--since 7d] [--search S] [--reason TAG] [--include-out] [--json]` | query the store; out-of-scope rows are hidden unless asked for |
+| `scan [--only SUBSTR] [--cache-minutes N] [--no-learn]` | fetch every source, score, store; `--only ashby:mistralai` for one source. Closes postings a whole-board ATS (Ashby, Greenhouse, Lever, Workable, Personio, Recruitee) stops listing, and re-checks up to `link_checks_per_scan` (40) high/review links unchecked for a day: only 404/410 close. Paged boards close only by link check. Closing never changes `status` |
+| `list [--decision high\|review\|low\|out] [--lane …] [--region eu\|emea\|au\|americas\|apac\|unknown] [--mode remote\|hybrid\|onsite\|unknown] [--country fr\|de\|ch\|nl\|other\|unknown] [--language en\|fr\|de] [--min-score N] [--since 7d] [--search S] [--reason TAG] [--include-out] [--include-closed] [--json]` | query the store; out-of-scope and closed rows are hidden unless asked for |
 | `show UID` / `open UID` / `mark UID shortlist\|applied\|rejected\|ignored` | act on one posting |
 | `discover NAME\|URL… [--write] [--market de]` | resolve an employer to a verified ATS board |
 | `import SEED.yaml [--write]` | re-validate an external `{name, ats, token}` list and merge the live boards |

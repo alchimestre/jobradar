@@ -89,6 +89,7 @@ def cmd_list(args) -> int:
         mode=getattr(args, "mode", None),
         country=getattr(args, "country", None),
         include_out=getattr(args, "include_out", False),
+        include_closed=getattr(args, "include_closed", False),
         limit=args.limit,
     )
     if args.json:
@@ -144,7 +145,7 @@ def _date_only(epoch: int) -> str:
 def cmd_show(args) -> int:
     cfg = load_config()
     conn = store.connect(_db_path(cfg))
-    rows = [r for r in store.query(conn, limit=2000) if r["uid"] == args.uid]
+    rows = [r for r in store.query(conn, include_closed=True, limit=2000) if r["uid"] == args.uid]
     if not rows:
         print(f"no job with uid {args.uid}", file=sys.stderr)
         return 1
@@ -175,7 +176,7 @@ def cmd_mark(args) -> int:
 def cmd_open(args) -> int:
     cfg = load_config()
     conn = store.connect(_db_path(cfg))
-    for row in store.query(conn, limit=2000):
+    for row in store.query(conn, include_closed=True, limit=2000):
         if row["uid"] == args.uid:
             webbrowser.open(row["url"])
             print(row["url"])
@@ -377,6 +378,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--mode", choices=["remote", "hybrid", "onsite", "unknown"])
     p.add_argument("--country", choices=["fr", "de", "ch", "nl", "other", "unknown"])
     p.add_argument("--include-out", action="store_true", help="include out-of-scope rows (location/JD language/JD geography)")
+    p.add_argument("--include-closed", action="store_true", help="include postings confirmed closed")
     p.add_argument("--limit", type=int, default=200)
     p.add_argument("--json", action="store_true")
     p.set_defaults(func=cmd_list)

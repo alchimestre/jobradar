@@ -33,7 +33,9 @@ CREATE TABLE IF NOT EXISTS jobs (
     status      TEXT NOT NULL DEFAULT 'new',
     first_seen  INTEGER NOT NULL,
     last_seen   INTEGER NOT NULL,
-    notes       TEXT NOT NULL DEFAULT ''
+    notes       TEXT NOT NULL DEFAULT '',
+    closed      TEXT NOT NULL DEFAULT '',
+    checked     INTEGER NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS jobs_first_seen ON jobs (first_seen DESC);
 CREATE INDEX IF NOT EXISTS jobs_decision   ON jobs (decision);
@@ -48,6 +50,8 @@ CREATE TABLE IF NOT EXISTS fetches (
 
 STATUSES = ("new", "shortlist", "applied", "rejected", "ignored")
 STALE_AFTER_SECONDS = 7 * 86400
+LINK_CHECK_INTERVAL_SECONDS = 86400
+CLOSING_STATUS_CODES = (404, 410)
 
 
 def connect(db: str | pathlib.Path) -> sqlite3.Connection:
@@ -60,6 +64,10 @@ def connect(db: str | pathlib.Path) -> sqlite3.Connection:
     for column in ("region", "language", "mode", "country"):
         if column not in existing:
             conn.execute(f"ALTER TABLE jobs ADD COLUMN {column} TEXT NOT NULL DEFAULT 'unknown'")
+    if "closed" not in existing:
+        conn.execute("ALTER TABLE jobs ADD COLUMN closed TEXT NOT NULL DEFAULT ''")
+    if "checked" not in existing:
+        conn.execute("ALTER TABLE jobs ADD COLUMN checked INTEGER NOT NULL DEFAULT 0")
     # WAL + busy_timeout: the TUI reads on the main thread while workers write.
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA busy_timeout=30000")
@@ -105,7 +113,7 @@ def upsert(conn: sqlite3.Connection, jobs: Iterable[tuple[Job, Match]]) -> tuple
             if job.location and job.location not in locations:
                 locations.append(job.location)
             conn.execute(
-                """UPDATE jobs SET last_seen = ?, sources = ?, location = ?,
+                """UPDATE jobs SET last_seen = ?, sources = ?, location = ?, closed = '',
                        score = ?, decision = ?, lane = ?, reasons = ?, scope = ?,
                        region = ?, language = ?, mode = ?, country = ?,
                        remote = ?, url = CASE WHEN url = '' THEN ? ELSE url END,
@@ -142,6 +150,38 @@ def last_fetch(conn: sqlite3.Connection, source: str) -> int:
     return int(row["last_fetch"]) if row else 0
 
 
+def close_missing(conn: sqlite3.Connection, source: str, live_uids: set[str]) -> int:
+    """Close open postings a full employer board no longer lists. Status is left untouched."""
+    rows = conn.execute(
+        "SELECT uid, sources FROM jobs WHERE closed = '' AND sources LIKE ?", (f"%{source}%",)
+    ).fetchall()
+    gone = [r["uid"] for r in rows if source in r["sources"].split(",") and r["uid"] not in live_uids]
+    conn.executemany("UPDATE jobs SET closed = ? WHERE uid = ?", [(f"gone from {source}", uid) for uid in gone])
+    conn.commit()
+    return len(gone)
+
+
+def due_link_checks(conn: sqlite3.Connection, limit: int) -> list[sqlite3.Row]:
+    """Open, worth-applying postings whose link was not checked in the last day, oldest check first."""
+    return conn.execute(
+        """SELECT uid, url FROM jobs
+           WHERE closed = '' AND url != '' AND decision IN ('high', 'review') AND checked < ?
+           ORDER BY checked LIMIT ?""",
+        (int(time.time()) - LINK_CHECK_INTERVAL_SECONDS, limit),
+    ).fetchall()
+
+
+def record_link_check(conn: sqlite3.Connection, uid: str, status_code: int | None) -> bool:
+    """Store one link check; only a 404 or 410 closes the posting. Returns True when it closed."""
+    closes = status_code in CLOSING_STATUS_CODES
+    conn.execute(
+        "UPDATE jobs SET checked = ?, closed = CASE WHEN ? THEN ? ELSE closed END WHERE uid = ?",
+        (int(time.time()), closes, f"link answered HTTP {status_code}", uid),
+    )
+    conn.commit()
+    return closes
+
+
 def query(
     conn: sqlite3.Connection,
     status: str | None = None,
@@ -156,6 +196,7 @@ def query(
     mode: str | None = None,
     country: str | None = None,
     include_out: bool = False,
+    include_closed: bool = False,
     limit: int = 500,
 ) -> list[sqlite3.Row]:
     where, params = ["1=1"], []
@@ -166,6 +207,8 @@ def query(
         params.append(decision)
     elif not include_out:
         where.append("decision != 'out'")
+    if not include_closed:
+        where.append("closed = ''")
     if status:
         where.append("status = ?")
         params.append(status)
